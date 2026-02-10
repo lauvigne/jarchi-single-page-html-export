@@ -80,6 +80,11 @@ var tplDocumentation = _.template(readFully(__DIR__ + 'templates/documentation.t
 var tplElement = _.template(readFully(__DIR__ + 'templates/element.tpl', 'UTF-8'));
 var tplRelationship = _.template(readFully(__DIR__ + 'templates/relationship.tpl', 'UTF-8'));
 
+var File = Java.type('java.io.File');
+var Base64 = Java.type('java.util.Base64');
+var Files = Java.type('java.nio.file.Files');
+var Paths = Java.type('java.nio.file.Paths');
+
 var visibilityRulesBold = '';
 var visibilityRulesReveal = '';
 var inputCheckbox = '';
@@ -106,11 +111,30 @@ if(! folders.size()) {
   console.log("All views have been selected.");
 }
 
-var filePath = window.promptSaveFile({ title: "Save as HTML file", filterExtensions : [ "*.html" , "*.*"], fileName : model.name + ".html" });
+var exportDirPath = window.prompt('Export directory path', model.name + '-export');
 
-if(!filePath) {
+if(!exportDirPath) {
   console.log('User cancelled.');
   exit();
+}
+
+var exportDirectory = new File(exportDirPath);
+if(!exportDirectory.exists()) exportDirectory.mkdirs();
+if(!exportDirectory.isDirectory()) {
+  console.log('Export directory is invalid: ', exportDirPath);
+  exit();
+}
+
+var indexFilePath = new File(exportDirectory, 'index.html').getPath();
+var imagesDirectory = new File(exportDirectory, 'images');
+if(!imagesDirectory.exists()) imagesDirectory.mkdirs();
+
+var baseHref = window.prompt('Base href', './');
+if(baseHref === null || baseHref === undefined || baseHref === '') {
+  baseHref = './';
+}
+if(baseHref.charAt(baseHref.length - 1) !== '/') {
+  baseHref += '/';
 }
 
 _.chain(folders).sortBy(function(f) { return f.name; }).each(function(f) {
@@ -131,7 +155,10 @@ function exportViews(folder) {
     visibilityRulesReveal += tplVisibilityRuleReveal({viewId: 'id-'+v.id});
     inputCheckbox += tplInputCheckbox({viewId: 'id-'+v.id});
     viewTitles += tplViewTitle({viewId: 'id-'+v.id, viewName: _.escape(v.name)});
-    viewDiagrams += tplViewDiagram({viewId: 'id-'+v.id, viewImage: $.model.renderViewAsBase64(v, "PNG")});
+    var viewImagePath = 'images/' + v.id + '.png';
+    var viewImageBase64 = $.model.renderViewAsBase64(v, "PNG");
+    writeBase64File(new File(imagesDirectory, v.id + '.png').getPath(), viewImageBase64);
+    viewDiagrams += tplViewDiagram({viewId: 'id-'+v.id, viewImagePath: viewImagePath});
     viewDocumentations += tplDocumentation({
       viewId: 'id-'+v.id,
       documentationText: _.escape(v.documentation).replace(/\n/g, '<br>'),
@@ -186,6 +213,7 @@ var mainReport = tplMainReport({
   roboto: roboto,
   icon: icon,
   picnic: picnic,
+  baseHref: _.escape(baseHref),
   modelTitle: _.escape(model.name),
   visibilityRulesBold: visibilityRulesBold,
   visibilityRulesReveal: visibilityRulesReveal,
@@ -212,11 +240,13 @@ var mainReport = tplMainReport({
 	mainHeaderMargin: '35px',
 	mainHeaderBgColor: '#eceff1',
 	mainHeaderColor: '#546e7a',
-	treeMargin: '1.3em'
+  treeMargin: '1.3em'
 });
 
-$.fs.writeFile(filePath, mainReport, 'UTF-8');
+$.fs.writeFile(indexFilePath, mainReport, 'UTF-8');
 
+console.log('HTML report: ', indexFilePath);
+console.log('Images folder: ', imagesDirectory.getPath());
 console.log('Export terminated.');
 
 function properCase(str) {
@@ -226,4 +256,9 @@ function properCase(str) {
       return txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase();
     }
   ).replace('-', ' ');
+}
+
+function writeBase64File(path, base64Content) {
+  var bytes = Base64.getDecoder().decode(String(base64Content));
+  Files.write(Paths.get(path), bytes);
 }
