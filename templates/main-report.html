@@ -146,8 +146,6 @@ Copyright (c) 2020 Phillip Beauvoir & Jean-Baptiste Sarrodie - MIT License
 		  , #views:not(:checked) ~ * .views
 		  , #queries:not(:checked) ~ * .queries
 		  , #dataviz:not(:checked) ~ * .dataviz
-		  /* do we run in sharepoint/onedrive preview? */
-		  , #javascript:not(:checked) ~ * .js-only
 		  /* is mardown enabled? */
 		  , #markdown:checked ~ * .txt
 		  , #markdown:not(:checked) ~ * .md {
@@ -308,11 +306,13 @@ Copyright (c) 2020 Phillip Beauvoir & Jean-Baptiste Sarrodie - MIT License
         .view-diagram-overlay {
           position: absolute;
           inset: 0;
+          pointer-events: none;
           z-index: 2;
         }
         .view-hotspot {
           position: absolute;
           display: block;
+          pointer-events: auto;
           cursor: pointer;
           border: 0;
           background: transparent;
@@ -471,8 +471,6 @@ Copyright (c) 2020 Phillip Beauvoir & Jean-Baptiste Sarrodie - MIT License
 	  <input id='dataviz' class="hidden" type='radio' name='nav'>
 		<!-- Checkbox used to show/hide the sidebar -->
 		<input id="sidebar" class="hidden" type="checkbox" checked>
-		<!-- Checkbox checked only when JavaScript is enabled -->
-		<input id="javascript" class="hidden" type="checkbox">
 		<!-- Checkbox used to enable/disable markdown rendering for documentation -->
 		<input id="markdown" class="hidden" type="checkbox" checked>
 
@@ -537,14 +535,14 @@ Copyright (c) 2020 Phillip Beauvoir & Jean-Baptiste Sarrodie - MIT License
 					<i class="icon book"></i>
 				</label>
 				<span class="spacer"></span>
-				<label for='queries' data-tooltip="Query Model" class="js-only tooltip-top">
+				<label for='queries' data-tooltip="Query Model" class="tooltip-top">
 					<i class="icon table"></i>
 				</label>
-				<span class="js-only spacer"></span>
-				<label for='dataviz' data-tooltip="Reports" class="js-only tooltip-top">
+				<span class="spacer"></span>
+				<label for='dataviz' data-tooltip="Reports" class="tooltip-top">
 					<i class="icon chart"></i>
 				</label>
-				<span class="js-only spacer"></span>
+				<span class="spacer"></span>
 			</nav>
 		</aside>
 
@@ -621,11 +619,5 @@ Copyright (c) 2020 Phillip Beauvoir & Jean-Baptiste Sarrodie - MIT License
 				</header>
 			</article>
 		</main>
-
-		<script>
-			// If javascript is enabled (ie. this report is NOT opened from
-			// within SharePoint or OneDrive), let's check 'javascript' input
-			document.getElementById("javascript").checked = true;
-		</script>
 	</body>
 </html>
