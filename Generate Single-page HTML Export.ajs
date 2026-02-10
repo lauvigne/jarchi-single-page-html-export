@@ -84,6 +84,12 @@ var File = Java.type('java.io.File');
 var Base64 = Java.type('java.util.Base64');
 var Files = Java.type('java.nio.file.Files');
 var Paths = Java.type('java.nio.file.Paths');
+var System = Java.type('java.lang.System');
+var URI = Java.type('java.net.URI');
+var StandardCharsets = Java.type('java.nio.charset.StandardCharsets');
+var System = Java.type('java.lang.System');
+var URI = Java.type('java.net.URI');
+var StandardCharsets = Java.type('java.nio.charset.StandardCharsets');
 
 var visibilityRulesBold = '';
 var visibilityRulesReveal = '';
@@ -111,14 +117,20 @@ if(! folders.size()) {
   console.log("All views have been selected.");
 }
 
-var exportDirPath = window.prompt('Export directory path', model.name + '-export');
+var preferencesFile = getExportPreferencesFile();
+var allPreferences = readExportPreferences(preferencesFile);
+var modelPreferenceKey = getModelPreferenceKey();
+var modelPreferences = allPreferences[modelPreferenceKey] || {};
+var defaultExportDirPath = modelPreferences.directory || getDefaultExportDirectoryPath();
+
+var exportDirPath = window.prompt('Export directory path', defaultExportDirPath);
 
 if(!exportDirPath) {
   console.log('User cancelled.');
   exit();
 }
 
-var exportDirectory = new File(exportDirPath);
+var exportDirectory = new File(exportDirPath).getAbsoluteFile();
 if(!exportDirectory.exists()) exportDirectory.mkdirs();
 if(!exportDirectory.isDirectory()) {
   console.log('Export directory is invalid: ', exportDirPath);
@@ -129,13 +141,19 @@ var indexFilePath = new File(exportDirectory, 'index.html').getPath();
 var imagesDirectory = new File(exportDirectory, 'images');
 if(!imagesDirectory.exists()) imagesDirectory.mkdirs();
 
-var baseHref = window.prompt('Base href', './');
+var baseHref = window.prompt('Base href', modelPreferences.baseHref || './');
 if(baseHref === null || baseHref === undefined || baseHref === '') {
   baseHref = './';
 }
 if(baseHref.charAt(baseHref.length - 1) !== '/') {
   baseHref += '/';
 }
+
+allPreferences[modelPreferenceKey] = {
+  directory: exportDirectory.getPath(),
+  baseHref: baseHref
+};
+writeExportPreferences(preferencesFile, allPreferences);
 
 _.chain(folders).sortBy(function(f) { return f.name; }).each(function(f) {
   exportViews(f);
@@ -261,4 +279,107 @@ function properCase(str) {
 function writeBase64File(path, base64Content) {
   var bytes = Base64.getDecoder().decode(String(base64Content));
   Files.write(Paths.get(path), bytes);
+}
+
+function getDefaultExportDirectoryPath() {
+  var exportsRoot = getExportsRootDirectory();
+  if(!exportsRoot.exists()) exportsRoot.mkdirs();
+  return new File(exportsRoot, sanitizeFileName(String(model.name || 'model'))).getPath();
+}
+
+function getExportsRootDirectory() {
+  var dataLocation = resolveDataLocationPath();
+  if(dataLocation) {
+    return new File(dataLocation, 'exports');
+  }
+  return new File(System.getProperty('user.home'), 'exports');
+}
+
+function resolveDataLocationPath() {
+  var raw = System.getProperty('data.location');
+  if(!raw) return null;
+  raw = String(raw).trim();
+  if(!raw) return null;
+
+  if(raw.indexOf('@user.home') === 0) {
+    raw = System.getProperty('user.home') + raw.substring('@user.home'.length);
+  }
+
+  if(raw.indexOf('file:') === 0) {
+    try {
+      return new File(new URI(raw)).getPath();
+    }
+    catch(err) {
+      return raw.substring('file:'.length);
+    }
+  }
+
+  return raw;
+}
+
+function getExportPreferencesFile() {
+  var configArea = resolveConfigurationAreaPath();
+  var configDir = configArea ? new File(configArea) : new File(System.getProperty('user.home'));
+  if(!configDir.exists()) configDir.mkdirs();
+  return new File(configDir, '.exportSinglePage');
+}
+
+function resolveConfigurationAreaPath() {
+  var raw = System.getProperty('osgi.configuration.area');
+  if(!raw) return null;
+  raw = String(raw).trim();
+  if(!raw) return null;
+
+  if(raw.indexOf('@user.home') === 0) {
+    raw = System.getProperty('user.home') + raw.substring('@user.home'.length);
+  }
+
+  if(raw.indexOf('file:') === 0) {
+    try {
+      return new File(new URI(raw)).getPath();
+    }
+    catch(err) {
+      return raw.substring('file:'.length);
+    }
+  }
+
+  return raw;
+}
+
+function readExportPreferences(preferencesFile) {
+  try {
+    if(preferencesFile && preferencesFile.exists() && preferencesFile.isFile()) {
+      var bytes = Files.readAllBytes(Paths.get(preferencesFile.getPath()));
+      var content = String(new java.lang.String(bytes, StandardCharsets.UTF_8)).trim();
+      if(content) return JSON.parse(content);
+    }
+  }
+  catch(err) {
+    console.log('Unable to read export preferences: ', err);
+  }
+  return {};
+}
+
+function writeExportPreferences(preferencesFile, allPreferences) {
+  try {
+    var parent = preferencesFile.getParentFile();
+    if(parent && !parent.exists()) parent.mkdirs();
+    Files.write(
+      Paths.get(preferencesFile.getPath()),
+      JSON.stringify(allPreferences, null, 2).getBytes(StandardCharsets.UTF_8)
+    );
+  }
+  catch(err) {
+    console.log('Unable to write export preferences: ', err);
+  }
+}
+
+function getModelPreferenceKey() {
+  if(model && model.id) return 'id:' + String(model.id);
+  return 'name:' + String(model.name || 'model');
+}
+
+function sanitizeFileName(value) {
+  var sanitized = String(value || '').replace(/[\\\/:\*\?"<>\|]/g, '_').trim();
+  return sanitized || 'model';
 }
