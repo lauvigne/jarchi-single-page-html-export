@@ -71,11 +71,15 @@ var picnic = readFully(__DIR__ + 'resources/picnic-custom.css', 'UTF-8');
 var tplMainReport = _.template(readFully(__DIR__ + 'templates/main-report.html', 'UTF-8'));
 var tplVisibilityRuleBold = _.template(readFully(__DIR__ + 'templates/visibility-rule-bold.tpl', 'UTF-8'));
 var tplVisibilityRuleReveal = _.template(readFully(__DIR__ + 'templates/visibility-rule-reveal.tpl', 'UTF-8'));
+var tplVisibilityRuleRevealBlock = _.template(readFully(__DIR__ + 'templates/visibility-rule-reveal-block.tpl', 'UTF-8'));
 var tplInputCheckbox = _.template(readFully(__DIR__ + 'templates/input-checkbox.tpl', 'UTF-8'));
 var tplTreeView = _.template(readFully(__DIR__ + 'templates/model-tree-view.tpl', 'UTF-8'));
 var tplTreeFolder = _.template(readFully(__DIR__ + 'templates/model-tree-folder.tpl', 'UTF-8'));
 var tplViewTitle = _.template(readFully(__DIR__ + 'templates/view-title.tpl', 'UTF-8'));
 var tplViewDiagram = _.template(readFully(__DIR__ + 'templates/view-diagram.tpl', 'UTF-8'));
+var tplViewHotspot = _.template(readFully(__DIR__ + 'templates/view-hotspot.tpl', 'UTF-8'));
+var tplViewElementPanel = _.template(readFully(__DIR__ + 'templates/view-element-panel.tpl', 'UTF-8'));
+var tplViewElementSelector = _.template(readFully(__DIR__ + 'templates/view-element-selector.tpl', 'UTF-8'));
 var tplDocumentation = _.template(readFully(__DIR__ + 'templates/documentation.tpl', 'UTF-8'));
 var tplElement = _.template(readFully(__DIR__ + 'templates/element.tpl', 'UTF-8'));
 var tplRelationship = _.template(readFully(__DIR__ + 'templates/relationship.tpl', 'UTF-8'));
@@ -87,17 +91,17 @@ var Paths = Java.type('java.nio.file.Paths');
 var System = Java.type('java.lang.System');
 var URI = Java.type('java.net.URI');
 var StandardCharsets = Java.type('java.nio.charset.StandardCharsets');
-var System = Java.type('java.lang.System');
-var URI = Java.type('java.net.URI');
-var StandardCharsets = Java.type('java.nio.charset.StandardCharsets');
+var ImageIO = Java.type('javax.imageio.ImageIO');
 
 var visibilityRulesBold = '';
 var visibilityRulesReveal = '';
+var visibilityRulesRevealBlock = '';
 var inputCheckbox = '';
 var treeFolder = '';
 var treeContent = '';
 var viewTitles =  '';
 var viewDiagrams = '';
+var viewElementSelectors = '';
 var viewDocumentations = '';
 var viewsIdsByConceptId = {};
 var elements = '';
@@ -122,6 +126,9 @@ var allPreferences = readExportPreferences(preferencesFile);
 var modelPreferenceKey = getModelPreferenceKey();
 var modelPreferences = allPreferences[modelPreferenceKey] || {};
 var defaultExportDirPath = modelPreferences.directory || getDefaultExportDirectoryPath();
+var debugHotspots = modelPreferences.debugHotspots === true;
+var hotspotZoomFactor = toNumber(modelPreferences.hotspotZoomFactor);
+if(hotspotZoomFactor === null || hotspotZoomFactor <= 0) hotspotZoomFactor = 2;
 
 var exportDirPath = window.prompt('Export directory path', defaultExportDirPath);
 
@@ -149,9 +156,24 @@ if(baseHref.charAt(baseHref.length - 1) !== '/') {
   baseHref += '/';
 }
 
+var debugInput = window.prompt('Enable hotspot debug mode (true/false)', String(debugHotspots));
+if(debugInput !== null && debugInput !== undefined && String(debugInput).trim() !== '') {
+  debugHotspots = String(debugInput).trim().toLowerCase() === 'true';
+}
+
+var hotspotZoomInput = window.prompt('Hotspot zoom factor', String(hotspotZoomFactor));
+if(hotspotZoomInput !== null && hotspotZoomInput !== undefined && String(hotspotZoomInput).trim() !== '') {
+  var parsedHotspotZoom = toNumber(hotspotZoomInput);
+  if(parsedHotspotZoom !== null && parsedHotspotZoom > 0) {
+    hotspotZoomFactor = parsedHotspotZoom;
+  }
+}
+
 allPreferences[modelPreferenceKey] = {
   directory: exportDirectory.getPath(),
-  baseHref: baseHref
+  baseHref: baseHref,
+  debugHotspots: debugHotspots,
+  hotspotZoomFactor: hotspotZoomFactor
 };
 writeExportPreferences(preferencesFile, allPreferences);
 
@@ -171,12 +193,26 @@ function exportViews(folder) {
     treeContent += tplTreeView({viewId: 'id-'+v.id, viewName: _.escape(v.name)});
     visibilityRulesBold += tplVisibilityRuleBold({viewId: 'id-'+v.id});
     visibilityRulesReveal += tplVisibilityRuleReveal({viewId: 'id-'+v.id});
+    visibilityRulesRevealBlock += tplVisibilityRuleRevealBlock({viewId: 'id-'+v.id});
     inputCheckbox += tplInputCheckbox({viewId: 'id-'+v.id});
     viewTitles += tplViewTitle({viewId: 'id-'+v.id, viewName: _.escape(v.name)});
     var viewImagePath = 'images/' + v.id + '.png';
     var viewImageBase64 = $.model.renderViewAsBase64(v, "PNG");
-    writeBase64File(new File(imagesDirectory, v.id + '.png').getPath(), viewImageBase64);
-    viewDiagrams += tplViewDiagram({viewId: 'id-'+v.id, viewImagePath: viewImagePath});
+    var viewImageFile = new File(imagesDirectory, v.id + '.png');
+    writeBase64File(viewImageFile.getPath(), viewImageBase64);
+    var viewImageSize = readImageSize(viewImageFile);
+    var viewInteraction = buildViewInteraction(v, viewImageSize, hotspotZoomFactor);
+    viewDiagrams += tplViewDiagram({
+      viewId: 'id-'+v.id,
+      viewImagePath: viewImagePath,
+      viewHotspots: viewInteraction.hotspots
+    });
+    viewElementSelectors += tplViewElementSelector({
+      viewId: 'id-'+v.id,
+      viewElementPanels: viewInteraction.panels,
+      viewNoneSelectorId: viewInteraction.noneSelectorId,
+      viewSelectorName: viewInteraction.selectorName
+    });
     viewDocumentations += tplDocumentation({
       viewId: 'id-'+v.id,
       documentationText: _.escape(v.documentation).replace(/\n/g, '<br>'),
@@ -232,13 +268,16 @@ var mainReport = tplMainReport({
   icon: icon,
   picnic: picnic,
   baseHref: _.escape(baseHref),
+  debugHotspotsClass: debugHotspots ? 'debug-hotspots' : '',
   modelTitle: _.escape(model.name),
   visibilityRulesBold: visibilityRulesBold,
   visibilityRulesReveal: visibilityRulesReveal,
+  visibilityRulesRevealBlock: visibilityRulesRevealBlock,
   inputCheckbox: inputCheckbox,
   treeContent: treeContent,
   viewTitles: viewTitles,
   viewDiagrams: viewDiagrams,
+  viewElementSelectors: viewElementSelectors,
   modelPurposeText: _.escape(model.purpose).replace(/\n/g, '<br>'),
   modelPurposeMarkdown: marked(_.escape(model.purpose), mdOptions),
   viewDocumentations: viewDocumentations,
@@ -279,6 +318,293 @@ function properCase(str) {
 function writeBase64File(path, base64Content) {
   var bytes = Base64.getDecoder().decode(String(base64Content));
   Files.write(Paths.get(path), bytes);
+}
+
+function buildViewInteraction(view, viewImageSize, hotspotZoomFactor) {
+  var selectorName = 'selected-element-' + view.id;
+  var noneSelectorId = 'selected-element-none-' + view.id;
+  var hotspots = '';
+  var panels = '';
+  var seenConcepts = {};
+  var zoom = hotspotZoomFactor;
+  var orderedEntries = [];
+
+  var roots = [];
+  $(view).children('element').each(function(e) {
+    roots.push(e);
+  });
+
+  for(var i = roots.length - 1; i >= 0; i--) {
+    collectEntriesRecursive(roots[i], 0, 0, zoom, orderedEntries);
+  }
+
+  if(!orderedEntries.length) {
+    return {
+      selectorName: selectorName,
+      noneSelectorId: noneSelectorId,
+      hotspots: hotspots,
+      panels: panels
+    };
+  }
+
+  var diagramBounds = calculateIntBounds(orderedEntries);
+  if(!diagramBounds) {
+    return {
+      selectorName: selectorName,
+      noneSelectorId: noneSelectorId,
+      hotspots: hotspots,
+      panels: panels
+    };
+  }
+
+  var rootOffsetX = 0;
+  var rootOffsetY = 0;
+  if(!(viewImageSize && viewImageSize.width > 0 && viewImageSize.height > 0)) {
+    // Fallback only: without image dimensions, normalize coordinates to top-left.
+    rootOffsetX = -diagramBounds.minX;
+    rootOffsetY = -diagramBounds.minY;
+  }
+
+  var normalizedEntries = [];
+  _.each(orderedEntries, function(entry) {
+    if(!entry.concept) return;
+    var width = entry.x2 - entry.x1;
+    var height = entry.y2 - entry.y1;
+    if(width <= 0 || height <= 0) return;
+    normalizedEntries.push({
+      concept: entry.concept,
+      x: entry.x1 + rootOffsetX,
+      y: entry.y1 + rootOffsetY,
+      width: width,
+      height: height
+    });
+  });
+
+  if(!normalizedEntries.length) {
+    return {
+      selectorName: selectorName,
+      noneSelectorId: noneSelectorId,
+      hotspots: hotspots,
+      panels: panels
+    };
+  }
+
+  var extents = null;
+  if(viewImageSize && viewImageSize.width > 0 && viewImageSize.height > 0) {
+    extents = {
+      minX: 0,
+      minY: 0,
+      width: viewImageSize.width,
+      height: viewImageSize.height
+    };
+  } else {
+    extents = calculateExtents(normalizedEntries);
+  }
+  if(!extents) {
+    return {
+      selectorName: selectorName,
+      noneSelectorId: noneSelectorId,
+      hotspots: hotspots,
+      panels: panels
+    };
+  }
+
+  var hotspotEntries = [];
+
+  _.each(normalizedEntries, function(entry) {
+    var conceptId = String(entry.concept.id);
+    var selectorId = 'selected-element-' + view.id + '-' + conceptId;
+    var percent = boundsToPercent(entry, extents);
+    if(!percent) return;
+
+    hotspotEntries.push({
+      selectorId: selectorId,
+      elementName: _.escape(entry.concept.name || ''),
+      left: percent.left,
+      top: percent.top,
+      width: percent.width,
+      height: percent.height,
+      area: entry.width * entry.height,
+      debugText: 'px[' + entry.x + ',' + entry.y + ' ' + entry.width + 'x' + entry.height + '] %[' + percent.left + ',' + percent.top + ' ' + percent.width + 'x' + percent.height + ']'
+    });
+
+    if(!seenConcepts[conceptId]) {
+      seenConcepts[conceptId] = true;
+      panels += tplViewElementPanel({
+        selectorId: selectorId,
+        selectorName: selectorName,
+        noneSelectorId: noneSelectorId,
+        elementName: _.escape(entry.concept.name || '(Unnamed)'),
+        elementType: properCase(String(entry.concept.type || '')),
+        elementDocumentationText: _.escape(entry.concept.documentation || '').replace(/\n/g, '<br>'),
+        elementDocumentationMarkdown: marked(_.escape(entry.concept.documentation || ''), mdOptions)
+      });
+    }
+  });
+
+  hotspotEntries = _.sortBy(hotspotEntries, function(h) { return -h.area; });
+  _.each(hotspotEntries, function(h, index) {
+    hotspots += tplViewHotspot({
+      selectorId: h.selectorId,
+      elementName: h.elementName,
+      left: h.left,
+      top: h.top,
+      width: h.width,
+      height: h.height,
+      zIndex: 10 + index,
+      debugText: h.debugText
+    });
+  });
+
+  return {
+    selectorName: selectorName,
+    noneSelectorId: noneSelectorId,
+    hotspots: hotspots,
+    panels: panels
+  };
+}
+
+function collectEntriesRecursive(diagramElement, offsetX, offsetY, zoom, entries) {
+  if(!diagramElement || !diagramElement.bounds) return;
+
+  var localX = toNumber(diagramElement.bounds.x);
+  var localY = toNumber(diagramElement.bounds.y);
+  var localW = toNumber(diagramElement.bounds.width);
+  var localH = toNumber(diagramElement.bounds.height);
+  if(localX === null || localY === null || localW === null || localH === null) return;
+  if(localW <= 0 || localH <= 0) return;
+
+  var x = toInt(localX * zoom) + offsetX;
+  var y = toInt(localY * zoom) + offsetY;
+  var w = toInt(localW * zoom);
+  var h = toInt(localH * zoom);
+  if(w <= 0 || h <= 0) return;
+
+  var children = [];
+  $(diagramElement).children('element').each(function(child) {
+    children.push(child);
+  });
+  for(var i = children.length - 1; i >= 0; i--) {
+    var child = children[i];
+    var childOffsetX = x;
+    var childOffsetY = y;
+    if(!isChildBoundsRelativeToParent(child, localW, localH)) {
+      // Some nested elements already carry absolute view coordinates.
+      childOffsetX = 0;
+      childOffsetY = 0;
+    }
+    collectEntriesRecursive(child, childOffsetX, childOffsetY, zoom, entries);
+  }
+
+  entries.push({
+    concept: diagramElement.concept,
+    x1: x,
+    y1: y,
+    x2: x + w,
+    y2: y + h
+  });
+}
+
+function isChildBoundsRelativeToParent(childElement, parentWidth, parentHeight) {
+  if(!childElement || !childElement.bounds) return false;
+  var x = toNumber(childElement.bounds.x);
+  var y = toNumber(childElement.bounds.y);
+  var w = toNumber(childElement.bounds.width);
+  var h = toNumber(childElement.bounds.height);
+  if(x === null || y === null || w === null || h === null) return false;
+  if(w <= 0 || h <= 0) return false;
+  var tolerance = 1;
+  return x >= -tolerance &&
+    y >= -tolerance &&
+    (x + w) <= (parentWidth + tolerance) &&
+    (y + h) <= (parentHeight + tolerance);
+}
+
+function calculateIntBounds(entries) {
+  if(!entries || !entries.length) return null;
+  var minX = null, minY = null, maxX = null, maxY = null;
+  _.each(entries, function(e) {
+    if(minX === null || e.x1 < minX) minX = e.x1;
+    if(minY === null || e.y1 < minY) minY = e.y1;
+    if(maxX === null || e.x2 > maxX) maxX = e.x2;
+    if(maxY === null || e.y2 > maxY) maxY = e.y2;
+  });
+  if(minX === null || minY === null || maxX === null || maxY === null) return null;
+  return {
+    minX: minX,
+    minY: minY,
+    width: maxX - minX,
+    height: maxY - minY
+  };
+}
+
+function readImageSize(imageFile) {
+  try {
+    if(!imageFile || !imageFile.exists()) return null;
+    var image = ImageIO.read(imageFile);
+    if(!image) return null;
+    return {
+      width: Number(image.getWidth()),
+      height: Number(image.getHeight())
+    };
+  }
+  catch(err) {
+    console.log('Unable to read image size for view export: ', err);
+    return null;
+  }
+}
+
+function calculateExtents(entries) {
+  if(!entries || !entries.length) return null;
+  var minX = null, minY = null, maxX = null, maxY = null;
+  _.each(entries, function(entry) {
+    if(minX === null || entry.x < minX) minX = entry.x;
+    if(minY === null || entry.y < minY) minY = entry.y;
+    if(maxX === null || (entry.x + entry.width) > maxX) maxX = entry.x + entry.width;
+    if(maxY === null || (entry.y + entry.height) > maxY) maxY = entry.y + entry.height;
+  });
+  if(minX === null || minY === null || maxX === null || maxY === null) return null;
+  var width = maxX - minX;
+  var height = maxY - minY;
+  if(width <= 0 || height <= 0) return null;
+  return { minX: minX, minY: minY, width: width, height: height };
+}
+
+function boundsToPercent(bounds, extents) {
+  if(!bounds || !extents) return null;
+  var left = ((bounds.x - extents.minX) * 100) / extents.width;
+  var top = ((bounds.y - extents.minY) * 100) / extents.height;
+  var width = (bounds.width * 100) / extents.width;
+  var height = (bounds.height * 100) / extents.height;
+  return {
+    left: round2(clampPercent(left)),
+    top: round2(clampPercent(top)),
+    width: round2(clampPercent(width)),
+    height: round2(clampPercent(height))
+  };
+}
+
+function clampPercent(v) {
+  if(v < 0) return 0;
+  if(v > 100) return 100;
+  return v;
+}
+
+function round2(v) {
+  return Math.round(v * 100) / 100;
+}
+
+function toNumber(value) {
+  var n = Number(value);
+  if(isNaN(n)) return null;
+  return n;
+}
+
+function toInt(value) {
+  var n = Number(value);
+  if(isNaN(n)) return 0;
+  if(n < 0) return Math.ceil(n);
+  return Math.floor(n);
 }
 
 function getDefaultExportDirectoryPath() {

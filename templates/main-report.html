@@ -288,9 +288,110 @@ Copyright (c) 2020 Phillip Beauvoir & Jean-Baptiste Sarrodie - MIT License
 		  	padding: 0;
 		  }
 		  .views img {
-				max-width: 100%;
-				margin-top: {{mainMargin}};	/* only set top margin because bottom is set by tabs */
-			}
+					max-width: 100%;
+					margin-top: {{mainMargin}};	/* only set top margin because bottom is set by tabs */
+				}
+        .view-diagram-block {
+          margin-top: {{mainMargin}};
+        }
+        .view-diagram-container {
+          position: relative;
+          display: inline-block;
+          max-width: 100%;
+        }
+        .view-diagram-container .diagram-image {
+          display: block;
+          max-width: 100%;
+          height: auto;
+          margin-top: 0;
+        }
+        .view-diagram-overlay {
+          position: absolute;
+          inset: 0;
+          z-index: 2;
+        }
+        .view-hotspot {
+          position: absolute;
+          display: block;
+          cursor: pointer;
+          border: 0;
+          background: transparent;
+          box-sizing: border-box;
+          z-index: 3;
+        }
+        .debug-hotspots .view-hotspot {
+          border: 1px solid #ff1744;
+          background: rgba(255, 23, 68, 0.14);
+        }
+        .debug-hotspots .view-hotspot:hover {
+          border-color: #00b0ff;
+          background: rgba(0, 176, 255, 0.22);
+        }
+        .debug-hotspots .view-hotspot::after {
+          content: "";
+          position: absolute;
+          top: 0;
+          left: 0;
+          width: 6px;
+          height: 6px;
+          background: #111;
+        }
+        .debug-hotspots .view-hotspot::before {
+          content: attr(data-debug);
+          position: absolute;
+          top: -1.4em;
+          left: 0;
+          background: rgba(0, 0, 0, 0.7);
+          color: #fff;
+          font-size: 10px;
+          line-height: 1.2;
+          padding: 2px 4px;
+          white-space: nowrap;
+          pointer-events: none;
+          z-index: 1000;
+        }
+        .view-element-selector {
+          margin-top: {{mainMargin}};
+        }
+        .view-element-selector > input {
+          display: none;
+        }
+        .view-element-selector > .view-element-panel {
+          display: none;
+          padding: 12px;
+          border: 1px solid #dddddd;
+          background: #ffffff;
+        }
+        .view-element-selector > input:checked + .view-element-panel {
+          display: block;
+        }
+        .view-element-panel h4 {
+          margin: 0 0 8px 0;
+        }
+        .view-element-sidebar {
+          margin-top: 16px;
+          padding-bottom: 24px;
+          width: 100%;
+          min-width: 0;
+        }
+        .sidebar .view-element-selector {
+          margin-top: 8px;
+          width: 100%;
+          max-width: 100%;
+          min-width: 0;
+        }
+        .sidebar .view-element-selector > .view-element-panel {
+          background: #f7f9fb;
+          color: #222;
+          border: 1px solid #c7d0d9;
+          width: 100%;
+          max-width: 100%;
+          box-sizing: border-box;
+          margin: 0;
+        }
+        .sidebar .view-element-selector .button.small {
+          margin-top: 8px;
+        }
 
 /* Tree */
 		  div.tree {
@@ -356,9 +457,13 @@ Copyright (c) 2020 Phillip Beauvoir & Jean-Baptiste Sarrodie - MIT License
 			{{visibilityRulesReveal}} {
 				display: table-row;			/* has to be table-row because we use it to reveal rows */
 			}
+			#id-model:checked ~ * .view-element-sidebar .id-model
+			{{visibilityRulesRevealBlock}} {
+				display: block;					/* view element panel must be block in sidebar */
+			}
 	  </style>
   </head>
-	<body>
+	<body class="{{debugHotspotsClass}}">
 		<!-- All inputs must be at the begining of the page (CSS rules uses 'input ~ *' selector) -->
 		<!-- Radio inputs used to select the current 'mode' (View Visualizer, Query Tool, DataVisualization) -->
 	  <input id='views'   class="hidden" type='radio' name='nav' checked>
@@ -405,14 +510,17 @@ Copyright (c) 2020 Phillip Beauvoir & Jean-Baptiste Sarrodie - MIT License
 		<!-- Report eally starts here with the sidebar -->
 		<aside class="sidebar">
 			<label for="sidebar" id="hide-sidebar" class="icon close"></label>
-			<nav class="secondary views">
-				<header class="top-header">
-					<h3>Content</h3>
-				</header>
-				<div class="tree">
-					{{treeContent}}
-				</div>
-			</nav>
+				<nav class="secondary views">
+					<header class="top-header">
+						<h3>Content</h3>
+					</header>
+					<div class="tree">
+						{{treeContent}}
+					</div>
+          <div class="view-element-sidebar">
+            {{viewElementSelectors}}
+          </div>
+				</nav>
 			<nav class="secondary queries">
 				<header class="top-header">
 					<h3>Query</h3>
@@ -521,9 +629,3 @@ Copyright (c) 2020 Phillip Beauvoir & Jean-Baptiste Sarrodie - MIT License
 		</script>
 	</body>
 </html>
-
-
-
-
-
-
