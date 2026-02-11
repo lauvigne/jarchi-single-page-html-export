@@ -353,7 +353,16 @@ function buildViewInteraction(view, viewImageSize, hotspotZoomFactor) {
 
   var rootOffsetX = 0;
   var rootOffsetY = 0;
-  if(!(viewImageSize && viewImageSize.width > 0 && viewImageSize.height > 0)) {
+  if(viewImageSize && viewImageSize.width > 0 && viewImageSize.height > 0) {
+    // renderViewToFile crops to minimum diagram bounds and keeps only uniform margins.
+    // Re-anchor absolute diagram coordinates to the exported image origin.
+    var marginX = toInt((viewImageSize.width - diagramBounds.width) / 2);
+    var marginY = toInt((viewImageSize.height - diagramBounds.height) / 2);
+    if(marginX < 0) marginX = 0;
+    if(marginY < 0) marginY = 0;
+    rootOffsetX = -diagramBounds.minX + marginX;
+    rootOffsetY = -diagramBounds.minY + marginY;
+  } else {
     // Fallback only: without image dimensions, normalize coordinates to top-left.
     rootOffsetX = -diagramBounds.minX;
     rootOffsetY = -diagramBounds.minY;
