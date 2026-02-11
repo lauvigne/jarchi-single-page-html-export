@@ -92,6 +92,8 @@ var System = Java.type('java.lang.System');
 var URI = Java.type('java.net.URI');
 var StandardCharsets = Java.type('java.nio.charset.StandardCharsets');
 var ImageIO = Java.type('javax.imageio.ImageIO');
+var ArchiPlugin = Java.type("com.archimatetool.editor.ArchiPlugin");
+var IPreferenceConstants = Java.type("com.archimatetool.editor.preferences.IPreferenceConstants");
 
 var visibilityRulesBold = '';
 var visibilityRulesReveal = '';
@@ -127,8 +129,7 @@ var modelPreferenceKey = getModelPreferenceKey();
 var modelPreferences = allPreferences[modelPreferenceKey] || {};
 var defaultExportDirPath = modelPreferences.directory || getDefaultExportDirectoryPath();
 var debugHotspots = modelPreferences.debugHotspots === true;
-var hotspotZoomFactor = toNumber(modelPreferences.hotspotZoomFactor);
-if(hotspotZoomFactor === null || hotspotZoomFactor <= 0) hotspotZoomFactor = 2;
+var hotspotZoomFactor = getHotspotZoomFactorFromArchiPreference();
 
 var exportDirPath = window.prompt('Export directory path', defaultExportDirPath);
 
@@ -161,19 +162,10 @@ if(debugInput !== null && debugInput !== undefined && String(debugInput).trim() 
   debugHotspots = String(debugInput).trim().toLowerCase() === 'true';
 }
 
-var hotspotZoomInput = window.prompt('Hotspot zoom factor', String(hotspotZoomFactor));
-if(hotspotZoomInput !== null && hotspotZoomInput !== undefined && String(hotspotZoomInput).trim() !== '') {
-  var parsedHotspotZoom = toNumber(hotspotZoomInput);
-  if(parsedHotspotZoom !== null && parsedHotspotZoom > 0) {
-    hotspotZoomFactor = parsedHotspotZoom;
-  }
-}
-
 allPreferences[modelPreferenceKey] = {
   directory: exportDirectory.getPath(),
   baseHref: baseHref,
-  debugHotspots: debugHotspots,
-  hotspotZoomFactor: hotspotZoomFactor
+  debugHotspots: debugHotspots
 };
 writeExportPreferences(preferencesFile, allPreferences);
 
@@ -847,6 +839,19 @@ function toNumber(value) {
   var n = Number(value);
   if(isNaN(n)) return null;
   return n;
+}
+
+function getHotspotZoomFactorFromArchiPreference() {
+  try {
+    var scaleImageExport = ArchiPlugin.getInstance()
+      .getPreferenceStore()
+      .getBoolean(IPreferenceConstants.SCALE_IMAGE_EXPORT);
+    return scaleImageExport ? 2 : 1;
+  }
+  catch(err) {
+    console.error('impossible to retrieve SCALE_IMAGE_EXPORT pref ! so use zoomFactor to 2')
+    return 2;
+  }
 }
 
 function toInt(value) {
