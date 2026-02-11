@@ -86,7 +86,6 @@ var tplElement = _.template(readFully(__DIR__ + 'templates/element.tpl', 'UTF-8'
 var tplRelationship = _.template(readFully(__DIR__ + 'templates/relationship.tpl', 'UTF-8'));
 
 var File = Java.type('java.io.File');
-var Base64 = Java.type('java.util.Base64');
 var Files = Java.type('java.nio.file.Files');
 var Paths = Java.type('java.nio.file.Paths');
 var System = Java.type('java.lang.System');
@@ -198,9 +197,8 @@ function exportViews(folder) {
     inputCheckbox += tplInputCheckbox({viewId: 'id-'+v.id});
     viewTitles += tplViewTitle({viewId: 'id-'+v.id, viewName: _.escape(v.name)});
     var viewImagePath = 'images/' + v.id + '.png';
-    var viewImageBase64 = $.model.renderViewAsBase64(v, "PNG");
     var viewImageFile = new File(imagesDirectory, v.id + '.png');
-    writeBase64File(viewImageFile.getPath(), viewImageBase64);
+    $.model.renderViewToFile(v, viewImageFile.getPath(), "PNG");
     var viewImageSize = readImageSize(viewImageFile);
     var viewInteraction = buildViewInteraction(v, viewImageSize, hotspotZoomFactor);
     viewDiagrams += tplViewDiagram({
@@ -314,11 +312,6 @@ function properCase(str) {
       return txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase();
     }
   ).replace('-', ' ');
-}
-
-function writeBase64File(path, base64Content) {
-  var bytes = Base64.getDecoder().decode(String(base64Content));
-  Files.write(Paths.get(path), bytes);
 }
 
 function buildViewInteraction(view, viewImageSize, hotspotZoomFactor) {
