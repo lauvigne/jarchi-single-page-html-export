@@ -135,20 +135,28 @@ if(! folders.size()) {
 var preferencesFile = getExportPreferencesFile();
 var allPreferences = readExportPreferences(preferencesFile);
 var modelPreferenceKey = getModelPreferenceKey();
-var modelPreferences = allPreferences[modelPreferenceKey] || {};
-var defaultExportDirPath = modelPreferences.directory || getDefaultExportDirectoryPath();
-var debugHotspots = modelPreferences.debugHotspots === true;
-var markdownEnabled = modelPreferences.markdownEnabled !== false;
-var minifyHtmlOutputEnabled = modelPreferences.minifyHtmlOutput !== false;
-var exportStatsEnabled = modelPreferences.exportStats === true;
+var rawModelPreferences = allPreferences[modelPreferenceKey] || {};
+var defaultExportDirPath = getDefaultExportDirectoryPath();
+var profileStore = normalizeModelPreferenceProfiles(rawModelPreferences, defaultExportDirPath);
+var activeProfile = profileStore.profiles[profileStore.activeProfile];
+var debugHotspots = activeProfile.debugHotspots === true;
+var markdownEnabled = activeProfile.markdownEnabled !== false;
+var minifyHtmlOutputEnabled = activeProfile.minifyHtmlOutput !== false;
+var exportStatsEnabled = activeProfile.exportStats === true;
 var hotspotZoomFactor = getHotspotZoomFactorFromArchiPreference();
-
-var exportDirPath = window.prompt('Export directory path', defaultExportDirPath);
-
-if(!exportDirPath) {
+var exportConfig = promptExportConfigurationDialog(model.name, profileStore);
+if(!exportConfig) {
   console.log('User cancelled.');
   exit();
 }
+profileStore = exportConfig.profileStore;
+var selectedProfile = exportConfig.profile;
+var exportDirPath = selectedProfile.directory;
+var baseHref = selectedProfile.baseHref;
+debugHotspots = selectedProfile.debugHotspots === true;
+markdownEnabled = selectedProfile.markdownEnabled !== false;
+minifyHtmlOutputEnabled = selectedProfile.minifyHtmlOutput !== false;
+exportStatsEnabled = selectedProfile.exportStats === true;
 
 var exportDirectory = new File(exportDirPath).getAbsoluteFile();
 if(!exportDirectory.exists()) exportDirectory.mkdirs();
@@ -156,47 +164,15 @@ if(!exportDirectory.isDirectory()) {
   console.log('Export directory is invalid: ', exportDirPath);
   exit();
 }
+profileStore.profiles[profileStore.activeProfile].directory = exportDirectory.getPath();
+profileStore.profiles[profileStore.activeProfile].baseHref = normalizeBaseHref(baseHref);
+baseHref = profileStore.profiles[profileStore.activeProfile].baseHref;
 
 var indexFilePath = new File(exportDirectory, 'index.html').getPath();
 var imagesDirectory = new File(exportDirectory, 'images');
 if(!imagesDirectory.exists()) imagesDirectory.mkdirs();
 
-var baseHref = window.prompt('Base href', modelPreferences.baseHref || './');
-if(baseHref === null || baseHref === undefined || baseHref === '') {
-  baseHref = './';
-}
-if(baseHref.charAt(baseHref.length - 1) !== '/') {
-  baseHref += '/';
-}
-
-var debugInput = window.prompt('Enable hotspot debug mode (true/false)', String(debugHotspots));
-if(debugInput !== null && debugInput !== undefined && String(debugInput).trim() !== '') {
-  debugHotspots = String(debugInput).trim().toLowerCase() === 'true';
-}
-
-var markdownInput = window.prompt('Enable markdown rendering for documentation (true/false)', String(markdownEnabled));
-if(markdownInput !== null && markdownInput !== undefined && String(markdownInput).trim() !== '') {
-  markdownEnabled = String(markdownInput).trim().toLowerCase() === 'true';
-}
-
-var minifyHtmlInput = window.prompt('Minify generated HTML output (true/false)', String(minifyHtmlOutputEnabled));
-if(minifyHtmlInput !== null && minifyHtmlInput !== undefined && String(minifyHtmlInput).trim() !== '') {
-  minifyHtmlOutputEnabled = String(minifyHtmlInput).trim().toLowerCase() === 'true';
-}
-
-var exportStatsInput = window.prompt('Print export size stats in console (true/false)', String(exportStatsEnabled));
-if(exportStatsInput !== null && exportStatsInput !== undefined && String(exportStatsInput).trim() !== '') {
-  exportStatsEnabled = String(exportStatsInput).trim().toLowerCase() === 'true';
-}
-
-allPreferences[modelPreferenceKey] = {
-  directory: exportDirectory.getPath(),
-  baseHref: baseHref,
-  debugHotspots: debugHotspots,
-  markdownEnabled: markdownEnabled,
-  minifyHtmlOutput: minifyHtmlOutputEnabled,
-  exportStats: exportStatsEnabled
-};
+allPreferences[modelPreferenceKey] = profileStore;
 writeExportPreferences(preferencesFile, allPreferences);
 
 _.chain(folders).sortBy(function(f) { return f.name; }).each(function(f) {
