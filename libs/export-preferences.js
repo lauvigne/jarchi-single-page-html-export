@@ -206,6 +206,8 @@ function normalizeModelPreferenceProfiles(modelPreferences, defaultExportDirPath
 }
 
 function promptExportConfigurationDialog(modelName, profileStore) {
+  ensureCreateDialogLibraryLoaded();
+
   var profileNames = Object.keys(profileStore.profiles || {}).sort();
   if(!profileNames.length) profileNames = ['default'];
   var activeName = profileStore.activeProfile && profileStore.profiles[profileStore.activeProfile]
@@ -213,31 +215,103 @@ function promptExportConfigurationDialog(modelName, profileStore) {
     : profileNames[0];
   var activeProfile = profileStore.profiles[activeName] || getDefaultExportProfile(getDefaultExportDirectoryPath());
 
-  var promptTitle =
-    'Export settings (single prompt)\n' +
-    'Known profiles: ' + profileNames.join(', ') + '\n' +
-    'Edit values below (profile can be existing or new):';
-  var defaultText =
-    'profile=' + activeName + '\n' +
-    'directory=' + String(activeProfile.directory || '') + '\n' +
-    'baseHref=' + normalizeBaseHref(activeProfile.baseHref) + '\n' +
-    'debugHotspots=' + String(activeProfile.debugHotspots === true) + '\n' +
-    'markdownEnabled=' + String(activeProfile.markdownEnabled !== false) + '\n' +
-    'minifyHtmlOutput=' + String(activeProfile.minifyHtmlOutput !== false) + '\n' +
-    'exportStats=' + String(activeProfile.exportStats === true);
+  function applyProfileToDialog(dialogLayout, profile) {
+    if(!dialogLayout || !dialogLayout.properties || !profile) return;
+    var props = dialogLayout.properties;
+    function setText(name, value) {
+      var widget = props[name] && props[name].widget;
+      if(widget && typeof widget.setText === 'function') widget.setText(String(value || ''));
+    }
+    function setChecked(name, value) {
+      var widget = props[name] && props[name].widget;
+      if(widget && typeof widget.setSelection === 'function') widget.setSelection(value === true);
+    }
 
-  var input = window.prompt(promptTitle, defaultText);
-  if(!input) return null;
-
-  var parsed = parseSinglePromptConfig(String(input));
-  if(!parsed) {
-    console.log('Invalid configuration format.');
-    return null;
+    setText('directory', profile.directory);
+    setText('baseHref', normalizeBaseHref(profile.baseHref));
+    setChecked('debugHotspots', profile.debugHotspots === true);
+    setChecked('markdownEnabled', profile.markdownEnabled !== false);
+    setChecked('minifyHtmlOutput', profile.minifyHtmlOutput !== false);
+    setChecked('exportStats', profile.exportStats === true);
   }
 
-  var profileName = String(parsed.profile || activeName || 'default').trim() || 'default';
-  var fallbackBase = profileStore.profiles[profileName] || activeProfile;
-  var normalized = normalizeProfile(parsed, normalizeProfile(fallbackBase, getDefaultExportProfile(getDefaultExportDirectoryPath())));
+  var dialog = createDialog(
+    {
+      type: 'form',
+      title: 'Single-page HTML Export',
+      message: 'Configuration profile for "' + String(modelName || 'model') + '"',
+      columns: 2,
+      properties: {
+        profile: {
+          type: 'combo',
+          label: 'Profile',
+          values: profileNames,
+          value: activeName,
+          extend: true,
+          tooltip: 'Choose an existing profile or type a new one and press Enter',
+          selection: function(_property, widget, dialogLayout) {
+            var selectedName = String(widget.getText() || '').trim();
+            var selectedProfile = profileStore.profiles[selectedName];
+            if(!selectedProfile) return false;
+            applyProfileToDialog(dialogLayout, selectedProfile);
+            return true;
+          }
+        },
+        directory: {
+          type: 'text',
+          label: 'Export directory',
+          value: String(activeProfile.directory || ''),
+          fill: true
+        },
+        baseHref: {
+          type: 'text',
+          label: 'Base href',
+          value: normalizeBaseHref(activeProfile.baseHref),
+          fill: true
+        },
+        debugHotspots: {
+          type: 'checkbox',
+          label: 'Debug',
+          message: 'Enable hotspot debug mode',
+          value: activeProfile.debugHotspots === true
+        },
+        markdownEnabled: {
+          type: 'checkbox',
+          label: 'Markdown',
+          message: 'Render documentation as Markdown',
+          value: activeProfile.markdownEnabled !== false
+        },
+        minifyHtmlOutput: {
+          type: 'checkbox',
+          label: 'Minify',
+          message: 'Minify generated HTML output',
+          value: activeProfile.minifyHtmlOutput !== false
+        },
+        exportStats: {
+          type: 'checkbox',
+          label: 'Stats',
+          message: 'Print export size stats in console',
+          value: activeProfile.exportStats === true
+        }
+      }
+    },
+    {
+      dialogType: 'titleAndDialog',
+      width: 760,
+      height: 420
+    }
+  );
+
+  if(!dialog.open()) return null;
+
+  var values = dialog.dialogResult || {};
+  var profileName = String(values.profile || activeName || 'default').trim() || 'default';
+  var profileBase = profileStore.profiles[profileName] || activeProfile;
+  var normalized = normalizeProfile(
+    values,
+    normalizeProfile(profileBase, getDefaultExportProfile(getDefaultExportDirectoryPath()))
+  );
+
   if(!String(normalized.directory || '').trim()) {
     console.log('Directory is required.');
     return null;
@@ -263,29 +337,15 @@ function promptExportConfigurationDialog(modelName, profileStore) {
   };
 }
 
-function parseSinglePromptConfig(text) {
-  var raw = String(text || '').trim();
-  if(!raw) return null;
+function ensureCreateDialogLibraryLoaded() {
+  if(typeof createDialog === 'function') return;
 
-  if(raw.charAt(0) === '{') {
-    try {
-      return JSON.parse(raw);
-    } catch(err) {
-      return null;
-    }
+  var file = new File(__DIR__ + 'CreateEclipseForm.js');
+  if(!file.exists() || !file.isFile()) {
+    throw new Error('CreateDialog library not found: ' + file.getAbsolutePath());
   }
-
-  var cfg = {};
-  var lines = raw.split(/\r?\n/);
-  for(var i = 0; i < lines.length; i++) {
-    var line = String(lines[i] || '').trim();
-    if(!line || line.charAt(0) === '#') continue;
-    var eq = line.indexOf('=');
-    if(eq <= 0) continue;
-    var key = String(line.substring(0, eq)).trim();
-    var value = String(line.substring(eq + 1)).trim();
-    if(!key) continue;
-    cfg[key] = value;
+  load(file.getAbsolutePath());
+  if(typeof createDialog !== 'function') {
+    throw new Error('CreateDialog did not initialize correctly from: ' + file.getAbsolutePath());
   }
-  return cfg;
 }
