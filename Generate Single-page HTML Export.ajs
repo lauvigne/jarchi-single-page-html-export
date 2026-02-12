@@ -137,6 +137,7 @@ var defaultExportDirPath = modelPreferences.directory || getDefaultExportDirecto
 var debugHotspots = modelPreferences.debugHotspots === true;
 var markdownEnabled = modelPreferences.markdownEnabled !== false;
 var minifyHtmlOutputEnabled = modelPreferences.minifyHtmlOutput !== false;
+var exportStatsEnabled = modelPreferences.exportStats === true;
 var hotspotZoomFactor = getHotspotZoomFactorFromArchiPreference();
 
 var exportDirPath = window.prompt('Export directory path', defaultExportDirPath);
@@ -180,12 +181,18 @@ if(minifyHtmlInput !== null && minifyHtmlInput !== undefined && String(minifyHtm
   minifyHtmlOutputEnabled = String(minifyHtmlInput).trim().toLowerCase() === 'true';
 }
 
+var exportStatsInput = window.prompt('Print export size stats in console (true/false)', String(exportStatsEnabled));
+if(exportStatsInput !== null && exportStatsInput !== undefined && String(exportStatsInput).trim() !== '') {
+  exportStatsEnabled = String(exportStatsInput).trim().toLowerCase() === 'true';
+}
+
 allPreferences[modelPreferenceKey] = {
   directory: exportDirectory.getPath(),
   baseHref: baseHref,
   debugHotspots: debugHotspots,
   markdownEnabled: markdownEnabled,
-  minifyHtmlOutput: minifyHtmlOutputEnabled
+  minifyHtmlOutput: minifyHtmlOutputEnabled,
+  exportStats: exportStatsEnabled
 };
 writeExportPreferences(preferencesFile, allPreferences);
 
@@ -344,9 +351,17 @@ var mainReport = tplMainReport({
   treeMargin: '1.3em'
 });
 
+if(exportStatsEnabled) {
+  logExportStats('Before minify', mainReport);
+}
+
 if(minifyHtmlOutputEnabled) {
   mainReport = minifyInlineCssBlocks(mainReport);
   mainReport = minifyGeneratedHtml(mainReport);
+}
+
+if(exportStatsEnabled) {
+  logExportStats('Final output', mainReport);
 }
 
 $.fs.writeFile(indexFilePath, mainReport, 'UTF-8');
@@ -471,6 +486,58 @@ function getShortDomId(kindPrefix, rawId) {
 
 function toBase36(n) {
   return Number(n).toString(36);
+}
+
+function logExportStats(label, html) {
+  var stats = computeHtmlStats(html);
+  console.log('#################### EXPORT STATS (' + label + ') ####################');
+  console.log('Total bytes       : ' + stats.totalBytes);
+  console.log('Inline CSS bytes  : ' + stats.inlineCssBytes + ' (' + stats.inlineCssBlocks + ' blocks)');
+  console.log('Hotspots bytes    : ' + stats.hotspotsBytes + ' (' + stats.hotspotCount + ' hotspots)');
+  console.log('Tables bytes      : ' + stats.tablesBytes + ' (' + stats.tableCount + ' tables)');
+  console.log('Panels bytes      : ' + stats.panelsBytes + ' (' + stats.panelCount + ' panels)');
+  console.log('############################################################');
+}
+
+function computeHtmlStats(html) {
+  var text = String(html || '');
+  var inlineCssMatches = matchAll(text, /<style>([\s\S]*?)<\/style>/g);
+  var hotspotMatches = matchAll(text, /<label class="view-hotspot"[^>]*><\/label>/g);
+  var tableMatches = matchAll(text, /<table[\s\S]*?<\/table>/g);
+  var panelMatches = matchAll(text, /<div class="view-element-panel">[\s\S]*?<\/div>/g);
+
+  return {
+    totalBytes: utf8ByteLength(text),
+    inlineCssBytes: sumMatchBytes(inlineCssMatches),
+    inlineCssBlocks: inlineCssMatches.length,
+    hotspotsBytes: sumMatchBytes(hotspotMatches),
+    hotspotCount: hotspotMatches.length,
+    tablesBytes: sumMatchBytes(tableMatches),
+    tableCount: tableMatches.length,
+    panelsBytes: sumMatchBytes(panelMatches),
+    panelCount: panelMatches.length
+  };
+}
+
+function matchAll(text, pattern) {
+  var matches = [];
+  var m;
+  while((m = pattern.exec(text)) !== null) {
+    matches.push(m[0]);
+  }
+  return matches;
+}
+
+function sumMatchBytes(matches) {
+  var total = 0;
+  for(var i = 0; i < matches.length; i++) {
+    total += utf8ByteLength(matches[i]);
+  }
+  return total;
+}
+
+function utf8ByteLength(text) {
+  return String(text || '').getBytes(StandardCharsets.UTF_8).length;
 }
 
 function readImageSize(imageFile) {
