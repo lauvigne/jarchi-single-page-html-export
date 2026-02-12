@@ -107,7 +107,7 @@ var treeContent = '';
 var viewComponents = [];
 var viewComponentsHtml = '';
 var globalElementPanelSelector = '';
-var viewsIdsByConceptId = {};
+var viewClassTokensByConceptId = {};
 var elements = '';
 var elementsCollection;
 var relationships = '';
@@ -134,6 +134,7 @@ var modelPreferences = allPreferences[modelPreferenceKey] || {};
 var defaultExportDirPath = modelPreferences.directory || getDefaultExportDirectoryPath();
 var debugHotspots = modelPreferences.debugHotspots === true;
 var markdownEnabled = modelPreferences.markdownEnabled !== false;
+var minifyHtmlOutputEnabled = modelPreferences.minifyHtmlOutput !== false;
 var hotspotZoomFactor = getHotspotZoomFactorFromArchiPreference();
 
 var exportDirPath = window.prompt('Export directory path', defaultExportDirPath);
@@ -172,11 +173,17 @@ if(markdownInput !== null && markdownInput !== undefined && String(markdownInput
   markdownEnabled = String(markdownInput).trim().toLowerCase() === 'true';
 }
 
+var minifyHtmlInput = window.prompt('Minify generated HTML output (true/false)', String(minifyHtmlOutputEnabled));
+if(minifyHtmlInput !== null && minifyHtmlInput !== undefined && String(minifyHtmlInput).trim() !== '') {
+  minifyHtmlOutputEnabled = String(minifyHtmlInput).trim().toLowerCase() === 'true';
+}
+
 allPreferences[modelPreferenceKey] = {
   directory: exportDirectory.getPath(),
   baseHref: baseHref,
   debugHotspots: debugHotspots,
-  markdownEnabled: markdownEnabled
+  markdownEnabled: markdownEnabled,
+  minifyHtmlOutput: minifyHtmlOutputEnabled
 };
 writeExportPreferences(preferencesFile, allPreferences);
 
@@ -208,7 +215,7 @@ function exportViews(folder) {
       } else {
         elementsCollection = $(e.concept);
       }
-      viewsIdsByConceptId[e.concept.id] += ' id-'+v.id;
+      addViewClassTokenForConcept(e.concept && e.concept.id, v.id);
     });
     $(v).find('relationship').each(function(r) {
       if(relationshipsCollection) {
@@ -216,7 +223,7 @@ function exportViews(folder) {
       } else {
         relationshipsCollection = $(r.concept);
       }
-      viewsIdsByConceptId[r.concept.id] += ' id-'+v.id;
+      addViewClassTokenForConcept(r.concept && r.concept.id, v.id);
     });
   });
   treeContent = tplTreeFolder({folderId: 'id-'+folder.id, folderName: _.escape(folder.name), folderContent: treeContent});
@@ -281,7 +288,7 @@ function aggregateRenderedViewComponents(components) {
 
 _.chain(elementsCollection).sortBy(function(e) { return e.name; }).each(function(e) {
     elements += tplElement({
-    viewsIds: viewsIdsByConceptId[e.id],
+    viewsIds: getViewClassesForConcept(e.id),
     elementName: _.escape(e.name),
     elementType: properCase(e.type),
     elementDocumentationContent: renderDocumentationContent(e.documentation || '')
@@ -292,7 +299,7 @@ globalElementPanelSelector = buildGlobalElementPanelSelector(elementsCollection)
 
 _.chain(relationshipsCollection).sortBy(function(r) { return r.name; }).each(function(r) {
     relationships += tplRelationship({
-    viewsIds: viewsIdsByConceptId[r.id],
+    viewsIds: getViewClassesForConcept(r.id),
     relationshipName: _.escape(r.name),
     relationshipType: properCase(r.type),
     relationshipSource: _.escape(r.source.name),
@@ -335,6 +342,10 @@ var mainReport = tplMainReport({
   treeMargin: '1.3em'
 });
 
+if(minifyHtmlOutputEnabled) {
+  mainReport = minifyGeneratedHtml(mainReport);
+}
+
 $.fs.writeFile(indexFilePath, mainReport, 'UTF-8');
 
 console.log('HTML report: ', indexFilePath);
@@ -351,11 +362,33 @@ function properCase(str) {
 }
 
 function renderDocumentationContent(rawDocumentation) {
+  if(!rawDocumentation || !String(rawDocumentation).trim()) return '';
   var escaped = _.escape(rawDocumentation || '');
   if(markdownEnabled) {
     return '<div class="md">' + marked(escaped, mdOptions) + '</div>';
   }
   return '<div class="txt">' + escaped.replace(/\n/g, '<br>') + '</div>';
+}
+
+function addViewClassTokenForConcept(conceptId, viewId) {
+  if(!conceptId || !viewId) return;
+  var key = String(conceptId);
+  var token = 'id-' + String(viewId);
+  var tokens = viewClassTokensByConceptId[key];
+  if(!tokens) {
+    tokens = [];
+    viewClassTokensByConceptId[key] = tokens;
+  }
+  if(tokens.indexOf(token) === -1) {
+    tokens.push(token);
+  }
+}
+
+function getViewClassesForConcept(conceptId) {
+  if(!conceptId) return '';
+  var tokens = viewClassTokensByConceptId[String(conceptId)];
+  if(!tokens || !tokens.length) return '';
+  return tokens.join(' ');
 }
 
 function buildGlobalElementPanelSelector(allElements) {
@@ -387,6 +420,14 @@ function buildBodyClassAttr(debugHotspots) {
   if(debugHotspots) classes.push('debug-hotspots');
   if(!classes.length) return '';
   return ' class="' + classes.join(' ') + '"';
+}
+
+function minifyGeneratedHtml(html) {
+  return String(html || '')
+    .replace(/>\s+</g, '><')
+    .replace(/[ \t]+\n/g, '\n')
+    .replace(/\n{2,}/g, '\n')
+    .trim();
 }
 
 function readImageSize(imageFile) {
