@@ -121,25 +121,17 @@ function resolveHotspotExtents(normalizedEntries, viewImageSize) {
 
 function buildHotspotsAndPanels(normalizedEntries, extents, viewId, selectorName, noneSelectorId) {
   var hotspotEntries = [];
-  var panels = '';
-  var seenConcepts = {};
 
   _.each(normalizedEntries, function(entry) {
     var hotspotEntry = buildHotspotEntry(entry, extents, viewId);
     if(!hotspotEntry) return;
     hotspotEntries.push(hotspotEntry);
-
-    if(hotspotEntry.isViewRef) return;
-    var conceptId = String(entry.concept.id);
-    if(seenConcepts[conceptId]) return;
-    seenConcepts[conceptId] = true;
-    panels += renderElementPanel(entry.concept, hotspotEntry.selectorId, selectorName, noneSelectorId);
   });
 
   var orderedHotspots = orderHotspotsForRendering(hotspotEntries);
   return {
     hotspots: renderHotspots(orderedHotspots),
-    panels: panels
+    panels: ''
   };
 }
 
@@ -150,7 +142,7 @@ function buildHotspotEntry(entry, extents, viewId) {
   var isViewRef = entry.concept && entry.concept.isViewRef === true && entry.concept.targetViewId;
   var selectorId = isViewRef
     ? 'id-' + String(entry.concept.targetViewId)
-    : 'selected-element-' + viewId + '-' + String(entry.concept.id);
+    : 'selected-element-' + String(entry.concept.id);
 
   return {
     selectorId: selectorId,
@@ -163,17 +155,6 @@ function buildHotspotEntry(entry, extents, viewId) {
     area: entry.width * entry.height,
     debugText: 'px[' + entry.x + ',' + entry.y + ' ' + entry.width + 'x' + entry.height + '] %[' + percent.left + ',' + percent.top + ' ' + percent.width + 'x' + percent.height + ']'
   };
-}
-
-function renderElementPanel(concept, selectorId, selectorName, noneSelectorId) {
-  return tplViewElementPanel({
-    selectorId: selectorId,
-    selectorName: selectorName,
-    noneSelectorId: noneSelectorId,
-    elementName: _.escape(concept.name || '(Unnamed)'),
-    elementType: properCase(String(concept.type || '')),
-    elementDocumentationContent: renderDocumentationContent(concept.documentation || '')
-  });
 }
 
 function orderHotspotsForRendering(hotspotEntries) {

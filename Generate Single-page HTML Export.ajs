@@ -106,11 +106,14 @@ var treeFolder = '';
 var treeContent = '';
 var viewComponents = [];
 var viewComponentsHtml = '';
+var globalElementPanelSelector = '';
 var viewsIdsByConceptId = {};
 var elements = '';
 var elementsCollection;
 var relationships = '';
 var relationshipsCollection;
+var GLOBAL_ELEMENT_SELECTOR_NAME = 'selected-element-global';
+var GLOBAL_ELEMENT_NONE_SELECTOR_ID = 'selected-element-none-global';
 
 var allFolders = $('folder');
 var viewsFolder = $(model).children().filter('folder.Views');
@@ -261,9 +264,6 @@ function renderViewComponent(viewModel) {
       viewName: viewModel.viewName,
       viewImagePath: viewModel.viewImagePath,
       viewHotspots: viewInteraction.hotspots,
-      viewSelectorName: viewInteraction.selectorName,
-      viewNoneSelectorId: viewInteraction.noneSelectorId,
-      viewElementPanels: viewInteraction.panels,
       documentationContent: viewModel.documentationContent
     })
   };
@@ -287,6 +287,8 @@ _.chain(elementsCollection).sortBy(function(e) { return e.name; }).each(function
     elementDocumentationContent: renderDocumentationContent(e.documentation || '')
     });
 });
+
+globalElementPanelSelector = buildGlobalElementPanelSelector(elementsCollection);
 
 _.chain(relationshipsCollection).sortBy(function(r) { return r.name; }).each(function(r) {
     relationships += tplRelationship({
@@ -312,6 +314,7 @@ var mainReport = tplMainReport({
   inputCheckbox: inputCheckbox,
   treeContent: treeContent,
   viewComponents: viewComponentsHtml,
+  globalElementPanelSelector: globalElementPanelSelector,
   modelPurposeContent: renderDocumentationContent(model.purpose || ''),
   elements: elements,
   relationships: relationships,
@@ -353,6 +356,30 @@ function renderDocumentationContent(rawDocumentation) {
     return '<div class="md">' + marked(escaped, mdOptions) + '</div>';
   }
   return '<div class="txt">' + escaped.replace(/\n/g, '<br>') + '</div>';
+}
+
+function buildGlobalElementPanelSelector(allElements) {
+  var panels = '';
+  if(allElements) {
+    _.chain(allElements).sortBy(function(e) { return e.name; }).each(function(e) {
+      panels += tplViewElementPanel({
+        selectorId: 'selected-element-' + String(e.id),
+        selectorName: GLOBAL_ELEMENT_SELECTOR_NAME,
+        noneSelectorId: GLOBAL_ELEMENT_NONE_SELECTOR_ID,
+        elementName: _.escape(e.name || '(Unnamed)'),
+        elementType: properCase(String(e.type || '')),
+        elementDocumentationContent: renderDocumentationContent(e.documentation || '')
+      });
+    });
+  }
+
+  return (
+    '<div class="view-element-selector">' +
+      '<input id="' + GLOBAL_ELEMENT_NONE_SELECTOR_ID + '" class="hidden" type="radio" name="' + GLOBAL_ELEMENT_SELECTOR_NAME + '" checked>' +
+      '<div class="view-element-panel"><h4>Element details</h4><p>Select an element in the diagram.</p></div>' +
+      panels +
+    '</div>'
+  );
 }
 
 function buildBodyClassAttr(debugHotspots) {
