@@ -145,10 +145,7 @@ Copyright (c) 2020 Phillip Beauvoir & Jean-Baptiste Sarrodie - MIT License
 		  /* which report mode? */
 		  , #views:not(:checked) ~ * .views
 		  , #queries:not(:checked) ~ * .queries
-		  , #dataviz:not(:checked) ~ * .dataviz
-		  /* is mardown enabled? */
-		  , #markdown:checked ~ * .txt
-		  , #markdown:not(:checked) ~ * .md {
+		  , #dataviz:not(:checked) ~ * .dataviz {
 		  	display: none;
 		  }
 
@@ -409,23 +406,6 @@ Copyright (c) 2020 Phillip Beauvoir & Jean-Baptiste Sarrodie - MIT License
 				color: #65a8e3;					/* blue taken from original Archi view icon */
 			}
 
-/* Toggle Switch */
-			label.switch::before {
-		  	font-family: 'Icon';		/* use icon font */
-				font-size: 35px;				/* seems to be just right */
-				margin-top: -0.3em;			/* provide the best rendering so far */
-				display: inline-block;	/* needed for transform to work */
-				color: #DDDDDD;					/* light grey */
-				transform: rotate(180deg);	/* when off, the toggle icon is reversed */
-				content: "\f205";				/* 'toggle-on' from FontAwesome */
-				transition: color 0.1s;
-			}
-			input:checked ~ label.switch::before
-			, #markdown:checked ~ * label.switch[for=markdown]::before {
-				transform: rotate(0deg);				/* when on, the toggle icon is used as-is */
-				color: {{headerBgColor}};	/* use the main accent color */
-			}
-
 /* Generated hidden/reveal rules */
 			#id-1:checked ~ * label[for=id-1]
 			{{visibilityRulesBold}} {
@@ -449,9 +429,8 @@ Copyright (c) 2020 Phillip Beauvoir & Jean-Baptiste Sarrodie - MIT License
 	  <input id='views'   class="hidden" type='radio' name='nav' checked>
 	  <input id='queries' class="hidden" type='radio' name='nav'>
 	  <input id='dataviz' class="hidden" type='radio' name='nav'>
-		<!-- Sidebar and markdown toggles -->
+		<!-- Sidebar toggle -->
 			<input id="sidebar" class="hidden" type="checkbox" checked>
-			<input id="markdown" class="hidden" type="checkbox" checked>
 		<!-- One radio input per exported view -->
 			<input id='id-model' type='radio' name='views' checked>
 			{{inputCheckbox}}
@@ -467,10 +446,7 @@ Copyright (c) 2020 Phillip Beauvoir & Jean-Baptiste Sarrodie - MIT License
 				<section style="min-width:500px;min-height:100px;">
 					<div class="flex" >
 						<div class="four-fifth">
-							Use Markdown for documentations:
-						</div>
-						<div class="fifth text-right">
-							<label for="markdown" class="switch"></label>
+							Markdown rendering mode is configured at export generation time.
 						</div>
 					</div>
 				</section>
@@ -546,8 +522,7 @@ Copyright (c) 2020 Phillip Beauvoir & Jean-Baptiste Sarrodie - MIT License
 							<div>
 							<article class="hidden view-component id-model">
 								<h2>{{modelTitle}}</h2>
-								<div class="txt">{{modelPurposeText}}</div>
-								<div class="md">{{modelPurposeMarkdown}}</div>
+								{{modelPurposeContent}}
 							</article>
 							{{viewComponents}}
 						</div>

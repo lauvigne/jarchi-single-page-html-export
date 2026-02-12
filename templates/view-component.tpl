@@ -10,9 +10,7 @@
     </div>
   </div>
   <div class="view-component-body">
-    <!-- Markdown/plain text rendering toggled globally by #markdown -->
-    <div class="txt">{{documentationText}}</div>
-    <div class="md">{{documentationMarkdown}}</div>
+    {{documentationContent}}
     <!-- Per-view element detail selector (radio-group scoped by viewSelectorName) -->
     <div class="view-element-selector">
       <input id="{{viewNoneSelectorId}}" class="hidden" type="radio" name="{{viewSelectorName}}" checked>

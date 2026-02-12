@@ -130,6 +130,7 @@ var modelPreferenceKey = getModelPreferenceKey();
 var modelPreferences = allPreferences[modelPreferenceKey] || {};
 var defaultExportDirPath = modelPreferences.directory || getDefaultExportDirectoryPath();
 var debugHotspots = modelPreferences.debugHotspots === true;
+var markdownEnabled = modelPreferences.markdownEnabled !== false;
 var hotspotZoomFactor = getHotspotZoomFactorFromArchiPreference();
 
 var exportDirPath = window.prompt('Export directory path', defaultExportDirPath);
@@ -163,10 +164,16 @@ if(debugInput !== null && debugInput !== undefined && String(debugInput).trim() 
   debugHotspots = String(debugInput).trim().toLowerCase() === 'true';
 }
 
+var markdownInput = window.prompt('Enable markdown rendering for documentation (true/false)', String(markdownEnabled));
+if(markdownInput !== null && markdownInput !== undefined && String(markdownInput).trim() !== '') {
+  markdownEnabled = String(markdownInput).trim().toLowerCase() === 'true';
+}
+
 allPreferences[modelPreferenceKey] = {
   directory: exportDirectory.getPath(),
   baseHref: baseHref,
-  debugHotspots: debugHotspots
+  debugHotspots: debugHotspots,
+  markdownEnabled: markdownEnabled
 };
 writeExportPreferences(preferencesFile, allPreferences);
 
@@ -225,8 +232,7 @@ function buildViewModel(view) {
     viewName: _.escape(view.name),
     viewImagePath: viewImagePath,
     viewImageSize: readImageSize(viewImageFile),
-    documentationText: _.escape(view.documentation).replace(/\n/g, '<br>'),
-    documentationMarkdown: marked(_.escape(view.documentation), mdOptions)
+    documentationContent: renderDocumentationContent(view.documentation || '')
   };
 }
 
@@ -258,8 +264,7 @@ function renderViewComponent(viewModel) {
       viewSelectorName: viewInteraction.selectorName,
       viewNoneSelectorId: viewInteraction.noneSelectorId,
       viewElementPanels: viewInteraction.panels,
-      documentationText: viewModel.documentationText,
-      documentationMarkdown: viewModel.documentationMarkdown
+      documentationContent: viewModel.documentationContent
     })
   };
 }
@@ -279,8 +284,7 @@ _.chain(elementsCollection).sortBy(function(e) { return e.name; }).each(function
     viewsIds: viewsIdsByConceptId[e.id],
     elementName: _.escape(e.name),
     elementType: properCase(e.type),
-    elementDocumentationText: _.escape(e.documentation).replace(/\n/g, '<br>'),
-    elementDocumentationMarkdown: marked(_.escape(e.documentation), mdOptions)
+    elementDocumentationContent: renderDocumentationContent(e.documentation || '')
     });
 });
 
@@ -291,8 +295,7 @@ _.chain(relationshipsCollection).sortBy(function(r) { return r.name; }).each(fun
     relationshipType: properCase(r.type),
     relationshipSource: _.escape(r.source.name),
     relationshipTarget: _.escape(r.target.name),
-    relationshipDocumentationText: _.escape(r.documentation).replace(/\n/g, '<br>'),
-    relationshipDocumentationMarkdown: marked(_.escape(r.documentation), mdOptions)
+    relationshipDocumentationContent: renderDocumentationContent(r.documentation || '')
     });
 });
 
@@ -301,7 +304,7 @@ var mainReport = tplMainReport({
   icon: icon,
   picnic: picnic,
   baseHref: _.escape(baseHref),
-  bodyClassAttr: debugHotspots ? ' class="debug-hotspots"' : '',
+  bodyClassAttr: buildBodyClassAttr(debugHotspots),
   modelTitle: _.escape(model.name),
   visibilityRulesBold: visibilityRulesBold,
   visibilityRulesReveal: visibilityRulesReveal,
@@ -309,8 +312,7 @@ var mainReport = tplMainReport({
   inputCheckbox: inputCheckbox,
   treeContent: treeContent,
   viewComponents: viewComponentsHtml,
-  modelPurposeText: _.escape(model.purpose).replace(/\n/g, '<br>'),
-  modelPurposeMarkdown: marked(_.escape(model.purpose), mdOptions),
+  modelPurposeContent: renderDocumentationContent(model.purpose || ''),
   elements: elements,
   relationships: relationships,
   sidebarBgColor: '#37474f',
@@ -343,6 +345,21 @@ function properCase(str) {
       return txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase();
     }
   ).replace('-', ' ');
+}
+
+function renderDocumentationContent(rawDocumentation) {
+  var escaped = _.escape(rawDocumentation || '');
+  if(markdownEnabled) {
+    return '<div class="md">' + marked(escaped, mdOptions) + '</div>';
+  }
+  return '<div class="txt">' + escaped.replace(/\n/g, '<br>') + '</div>';
+}
+
+function buildBodyClassAttr(debugHotspots) {
+  var classes = [];
+  if(debugHotspots) classes.push('debug-hotspots');
+  if(!classes.length) return '';
+  return ' class="' + classes.join(' ') + '"';
 }
 
 function readImageSize(imageFile) {

@@ -12,7 +12,7 @@ stored on Onedrive Pro, MsTeams or SharePoint Document Library.
 
 To use it, simply download the archive from the [latest release](https://github.com/archi-contribs/jarchi-single-page-html-export/releases) and unzip it in your `scripts` folder. Then select one or more folders containing views and run the script through the context menu.
 
-Mardown rendering of documentations is `on` by default. You can set it `off` in the "Preferences" dialog (cog icon on top right).
+Markdown rendering of documentations is configured at export generation time (`true/false` prompt) and persisted per model. Only the selected format is emitted in the generated HTML.
 
 ## Architecture (current)
 

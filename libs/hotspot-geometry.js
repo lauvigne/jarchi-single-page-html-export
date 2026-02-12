@@ -172,8 +172,7 @@ function renderElementPanel(concept, selectorId, selectorName, noneSelectorId) {
     noneSelectorId: noneSelectorId,
     elementName: _.escape(concept.name || '(Unnamed)'),
     elementType: properCase(String(concept.type || '')),
-    elementDocumentationText: _.escape(concept.documentation || '').replace(/\n/g, '<br>'),
-    elementDocumentationMarkdown: marked(_.escape(concept.documentation || ''), mdOptions)
+    elementDocumentationContent: renderDocumentationContent(concept.documentation || '')
   });
 }
 
