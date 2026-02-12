@@ -117,6 +117,7 @@ var GLOBAL_ELEMENT_NONE_SELECTOR_ID = 'selected-element-none-global';
 var GLOBAL_PANEL_TAB_NAME = 'selected-element-panel-tab';
 var GLOBAL_PANEL_TAB_DOC_ID = 'selected-element-panel-tab-doc';
 var GLOBAL_PANEL_TAB_PROPS_ID = 'selected-element-panel-tab-props';
+var elementPanelSelectorByConceptId = {};
 var domIdMap = {};
 var domIdCounter = 0;
 
@@ -282,25 +283,23 @@ function aggregateRenderedViewComponents(components) {
   });
 }
 
+globalElementPanelSelector = buildGlobalElementPanelSelector(elementsCollection);
+
 _.chain(elementsCollection).sortBy(function(e) { return e.name; }).each(function(e) {
     elements += tplElement({
     viewsIds: getViewClassesForConcept(e.id),
-    elementName: _.escape(e.name),
-    elementType: properCase(e.type),
-    elementDocumentationContent: renderDocumentationContent(e.documentation || '')
+    elementName: renderConceptLink(e, _.escape(e.name)),
+    elementType: properCase(e.type)
     });
 });
-
-globalElementPanelSelector = buildGlobalElementPanelSelector(elementsCollection);
 
 _.chain(relationshipsCollection).sortBy(function(r) { return r.name; }).each(function(r) {
     relationships += tplRelationship({
     viewsIds: getViewClassesForConcept(r.id),
     relationshipName: _.escape(r.name),
     relationshipType: properCase(r.type),
-    relationshipSource: _.escape(r.source.name),
-    relationshipTarget: _.escape(r.target.name),
-    relationshipDocumentationContent: renderDocumentationContent(r.documentation || '')
+    relationshipSource: renderConceptLink(r.source, _.escape(r.source.name)),
+    relationshipTarget: renderConceptLink(r.target, _.escape(r.target.name))
     });
 });
 
@@ -398,9 +397,11 @@ function getViewClassesForConcept(conceptId) {
 
 function buildGlobalElementPanelSelector(allElements) {
   var panels = '';
+  elementPanelSelectorByConceptId = {};
   if(allElements) {
     _.chain(allElements).sortBy(function(e) { return e.name; }).each(function(e) {
       var selectorId = getElementSelectorDomId(e.id);
+      elementPanelSelectorByConceptId[String(e.id)] = selectorId;
       panels += tplViewElementPanel({
         selectorId: selectorId,
         selectorName: GLOBAL_ELEMENT_SELECTOR_NAME,
@@ -435,6 +436,18 @@ function buildBodyClassAttr(debugHotspots) {
 function renderElementDocumentationContent(rawDocumentation) {
   var content = renderDocumentationContent(rawDocumentation || '');
   return content;
+}
+
+function getElementPanelSelectorIdForConcept(conceptId) {
+  if(!conceptId) return null;
+  return elementPanelSelectorByConceptId[String(conceptId)] || null;
+}
+
+function renderConceptLink(concept, fallbackText) {
+  var text = fallbackText || _.escape((concept && concept.name) || '');
+  var selectorId = getElementPanelSelectorIdForConcept(concept && concept.id);
+  if(!selectorId) return text;
+  return '<label for="' + _.escape(selectorId) + '" class="pointer clickable-link">' + text + '</label>';
 }
 
 function renderElementPropertiesContent(concept) {

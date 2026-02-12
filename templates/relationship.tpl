@@ -3,4 +3,3 @@
 	<td>{{relationshipType}}
 	<td>{{relationshipSource}}
 	<td>{{relationshipTarget}}
-	<td>{{relationshipDocumentationContent}}
