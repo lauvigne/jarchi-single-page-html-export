@@ -64,6 +64,12 @@ var mdOptions = {
   smartypants: true
 };
 
+load(__DIR__ + 'libs/viewref-resolution.js');
+load(__DIR__ + 'libs/hotspot-geometry.js');
+load(__DIR__ + 'libs/export-preferences.js');
+// Note: helpers are loaded before runtime state is initialized.
+// They rely on variables defined later (templates/options) at call time.
+
 var roboto = readFully(__DIR__ + 'resources/roboto.css', 'UTF-8');
 var icon = readFully(__DIR__ + 'resources/icon.css', 'UTF-8');
 var picnic = readFully(__DIR__ + 'resources/picnic-custom.css', 'UTF-8');
@@ -75,13 +81,10 @@ var tplVisibilityRuleRevealBlock = _.template(readFully(__DIR__ + 'templates/vis
 var tplInputCheckbox = _.template(readFully(__DIR__ + 'templates/input-checkbox.tpl', 'UTF-8'));
 var tplTreeView = _.template(readFully(__DIR__ + 'templates/model-tree-view.tpl', 'UTF-8'));
 var tplTreeFolder = _.template(readFully(__DIR__ + 'templates/model-tree-folder.tpl', 'UTF-8'));
-var tplViewTitle = _.template(readFully(__DIR__ + 'templates/view-title.tpl', 'UTF-8'));
-var tplViewDiagram = _.template(readFully(__DIR__ + 'templates/view-diagram.tpl', 'UTF-8'));
 var tplViewHotspotDebug = _.template(readFully(__DIR__ + 'templates/view-hotspot-debug.tpl', 'UTF-8'));
 var tplViewHotspotCompact = _.template(readFully(__DIR__ + 'templates/view-hotspot-compact.tpl', 'UTF-8'));
+var tplViewComponent = _.template(readFully(__DIR__ + 'templates/view-component.tpl', 'UTF-8'));
 var tplViewElementPanel = _.template(readFully(__DIR__ + 'templates/view-element-panel.tpl', 'UTF-8'));
-var tplViewElementSelector = _.template(readFully(__DIR__ + 'templates/view-element-selector.tpl', 'UTF-8'));
-var tplDocumentation = _.template(readFully(__DIR__ + 'templates/documentation.tpl', 'UTF-8'));
 var tplElement = _.template(readFully(__DIR__ + 'templates/element.tpl', 'UTF-8'));
 var tplRelationship = _.template(readFully(__DIR__ + 'templates/relationship.tpl', 'UTF-8'));
 
@@ -101,10 +104,8 @@ var visibilityRulesRevealBlock = '';
 var inputCheckbox = '';
 var treeFolder = '';
 var treeContent = '';
-var viewTitles =  '';
-var viewDiagrams = '';
-var viewElementSelectors = '';
-var viewDocumentations = '';
+var viewComponents = [];
+var viewComponentsHtml = '';
 var viewsIdsByConceptId = {};
 var elements = '';
 var elementsCollection;
@@ -173,6 +174,8 @@ _.chain(folders).sortBy(function(f) { return f.name; }).each(function(f) {
   exportViews(f);
 });
 
+aggregateRenderedViewComponents(viewComponents);
+
 function exportViews(folder) {
   console.log('Exporting "', folder.name, '"...');
   var previousContent = treeContent;
@@ -181,34 +184,12 @@ function exportViews(folder) {
     exportViews(f)
   });
   _.chain($(folder).children('view')).sortBy(function(v) { return v.name; }).each(function(v) {
-    // Generate report's fragments
-    treeContent += tplTreeView({viewId: 'id-'+v.id, viewName: _.escape(v.name)});
-    visibilityRulesBold += tplVisibilityRuleBold({viewId: 'id-'+v.id});
-    visibilityRulesReveal += tplVisibilityRuleReveal({viewId: 'id-'+v.id});
-    visibilityRulesRevealBlock += tplVisibilityRuleRevealBlock({viewId: 'id-'+v.id});
-    inputCheckbox += tplInputCheckbox({viewId: 'id-'+v.id});
-    viewTitles += tplViewTitle({viewId: 'id-'+v.id, viewName: _.escape(v.name)});
-    var viewImagePath = 'images/' + v.id + '.png';
-    var viewImageFile = new File(imagesDirectory, v.id + '.png');
-    $.model.renderViewToFile(v, viewImageFile.getPath(), "PNG");
-    var viewImageSize = readImageSize(viewImageFile);
-    var viewInteraction = buildViewInteraction(v, viewImageSize, hotspotZoomFactor);
-    viewDiagrams += tplViewDiagram({
-      viewId: 'id-'+v.id,
-      viewImagePath: viewImagePath,
-      viewHotspots: viewInteraction.hotspots
-    });
-    viewElementSelectors += tplViewElementSelector({
-      viewId: 'id-'+v.id,
-      viewElementPanels: viewInteraction.panels,
-      viewNoneSelectorId: viewInteraction.noneSelectorId,
-      viewSelectorName: viewInteraction.selectorName
-    });
-    viewDocumentations += tplDocumentation({
-      viewId: 'id-'+v.id,
-      documentationText: _.escape(v.documentation).replace(/\n/g, '<br>'),
-      documentationMarkdown: marked(_.escape(v.documentation), mdOptions)
-    });
+    // Build and render one autonomous component model per view, then aggregate.
+    var viewModel = buildViewModel(v);
+    var renderedComponent = renderViewComponent(viewModel);
+    viewComponents.push(renderedComponent);
+
+    treeContent += renderedComponent.treeItem;
     
     // Update lists of elements and relationships
     $(v).find('element').each(function(e) {
@@ -230,6 +211,67 @@ function exportViews(folder) {
   });
   treeContent = tplTreeFolder({folderId: 'id-'+folder.id, folderName: _.escape(folder.name), folderContent: treeContent});
   treeContent = previousContent + treeContent;
+}
+
+function buildViewModel(view) {
+  var viewId = 'id-' + view.id;
+  var viewImagePath = 'images/' + view.id + '.png';
+  var viewImageFile = new File(imagesDirectory, view.id + '.png');
+  $.model.renderViewToFile(view, viewImageFile.getPath(), "PNG");
+
+  return {
+    rawView: view,
+    viewId: viewId,
+    viewName: _.escape(view.name),
+    viewImagePath: viewImagePath,
+    viewImageSize: readImageSize(viewImageFile),
+    documentationText: _.escape(view.documentation).replace(/\n/g, '<br>'),
+    documentationMarkdown: marked(_.escape(view.documentation), mdOptions)
+  };
+}
+
+function renderViewComponent(viewModel) {
+  var viewInteraction = buildViewInteraction(viewModel.rawView, viewModel.viewImageSize, hotspotZoomFactor);
+
+  return {
+    treeItem: tplTreeView({
+      viewId: viewModel.viewId,
+      viewName: viewModel.viewName
+    }),
+    visibilityBoldRule: tplVisibilityRuleBold({
+      viewId: viewModel.viewId
+    }),
+    visibilityRevealRule: tplVisibilityRuleReveal({
+      viewId: viewModel.viewId
+    }),
+    visibilityRevealBlockRule: tplVisibilityRuleRevealBlock({
+      viewId: viewModel.viewId
+    }),
+    inputCheckbox: tplInputCheckbox({
+      viewId: viewModel.viewId
+    }),
+    viewComponent: tplViewComponent({
+      viewId: viewModel.viewId,
+      viewName: viewModel.viewName,
+      viewImagePath: viewModel.viewImagePath,
+      viewHotspots: viewInteraction.hotspots,
+      viewSelectorName: viewInteraction.selectorName,
+      viewNoneSelectorId: viewInteraction.noneSelectorId,
+      viewElementPanels: viewInteraction.panels,
+      documentationText: viewModel.documentationText,
+      documentationMarkdown: viewModel.documentationMarkdown
+    })
+  };
+}
+
+function aggregateRenderedViewComponents(components) {
+  _.each(components, function(component) {
+    visibilityRulesBold += component.visibilityBoldRule;
+    visibilityRulesReveal += component.visibilityRevealRule;
+    visibilityRulesRevealBlock += component.visibilityRevealBlockRule;
+    inputCheckbox += component.inputCheckbox;
+    viewComponentsHtml += component.viewComponent;
+  });
 }
 
 _.chain(elementsCollection).sortBy(function(e) { return e.name; }).each(function(e) {
@@ -259,19 +301,16 @@ var mainReport = tplMainReport({
   icon: icon,
   picnic: picnic,
   baseHref: _.escape(baseHref),
-  debugHotspotsClass: debugHotspots ? 'debug-hotspots' : '',
+  bodyClassAttr: debugHotspots ? ' class="debug-hotspots"' : '',
   modelTitle: _.escape(model.name),
   visibilityRulesBold: visibilityRulesBold,
   visibilityRulesReveal: visibilityRulesReveal,
   visibilityRulesRevealBlock: visibilityRulesRevealBlock,
   inputCheckbox: inputCheckbox,
   treeContent: treeContent,
-  viewTitles: viewTitles,
-  viewDiagrams: viewDiagrams,
-  viewElementSelectors: viewElementSelectors,
+  viewComponents: viewComponentsHtml,
   modelPurposeText: _.escape(model.purpose).replace(/\n/g, '<br>'),
   modelPurposeMarkdown: marked(_.escape(model.purpose), mdOptions),
-  viewDocumentations: viewDocumentations,
   elements: elements,
   relationships: relationships,
   sidebarBgColor: '#37474f',
@@ -306,479 +345,6 @@ function properCase(str) {
   ).replace('-', ' ');
 }
 
-function buildViewInteraction(view, viewImageSize, hotspotZoomFactor) {
-  var selectorName = 'selected-element-' + view.id;
-  var noneSelectorId = 'selected-element-none-' + view.id;
-  var hotspots = '';
-  var panels = '';
-  var seenConcepts = {};
-  var zoom = hotspotZoomFactor;
-  var orderedEntries = [];
-
-  var roots = [];
-  $(view).children().filter(o => isDiagramNodeHotspotCandidate(o)).each(function(e) {
-    roots.push(e);
-  });
-
-  for(var i = roots.length - 1; i >= 0; i--) {
-    collectEntriesRecursive(roots[i], 0, 0, zoom, orderedEntries, String(view.id));
-  }
-
-  if(!orderedEntries.length) {
-    return {
-      selectorName: selectorName,
-      noneSelectorId: noneSelectorId,
-      hotspots: hotspots,
-      panels: panels
-    };
-  }
-
-  var diagramBounds = calculateIntBounds(orderedEntries);
-  if(!diagramBounds) {
-    return {
-      selectorName: selectorName,
-      noneSelectorId: noneSelectorId,
-      hotspots: hotspots,
-      panels: panels
-    };
-  }
-
-  var rootOffsetX = 0;
-  var rootOffsetY = 0;
-  if(viewImageSize && viewImageSize.width > 0 && viewImageSize.height > 0) {
-    // renderViewToFile crops to minimum diagram bounds and keeps only uniform margins.
-    // Re-anchor absolute diagram coordinates to the exported image origin.
-    var marginX = toInt((viewImageSize.width - diagramBounds.width) / 2);
-    var marginY = toInt((viewImageSize.height - diagramBounds.height) / 2);
-    if(marginX < 0) marginX = 0;
-    if(marginY < 0) marginY = 0;
-    rootOffsetX = -diagramBounds.minX + marginX;
-    rootOffsetY = -diagramBounds.minY + marginY;
-  } else {
-    // Fallback only: without image dimensions, normalize coordinates to top-left.
-    rootOffsetX = -diagramBounds.minX;
-    rootOffsetY = -diagramBounds.minY;
-  }
-
-  var normalizedEntries = [];
-  _.each(orderedEntries, function(entry) {
-    if(!entry.concept) return;
-    var width = entry.x2 - entry.x1;
-    var height = entry.y2 - entry.y1;
-    if(width <= 0 || height <= 0) return;
-    normalizedEntries.push({
-      concept: entry.concept,
-      x: entry.x1 + rootOffsetX,
-      y: entry.y1 + rootOffsetY,
-      width: width,
-      height: height
-    });
-  });
-
-  if(!normalizedEntries.length) {
-    return {
-      selectorName: selectorName,
-      noneSelectorId: noneSelectorId,
-      hotspots: hotspots,
-      panels: panels
-    };
-  }
-
-  var extents = null;
-  if(viewImageSize && viewImageSize.width > 0 && viewImageSize.height > 0) {
-    extents = {
-      minX: 0,
-      minY: 0,
-      width: viewImageSize.width,
-      height: viewImageSize.height
-    };
-  } else {
-    extents = calculateExtents(normalizedEntries);
-  }
-  if(!extents) {
-    return {
-      selectorName: selectorName,
-      noneSelectorId: noneSelectorId,
-      hotspots: hotspots,
-      panels: panels
-    };
-  }
-
-  var hotspotEntries = [];
-
-  _.each(normalizedEntries, function(entry) {
-    var conceptId = String(entry.concept.id);
-    var isViewRef = entry.concept && entry.concept.isViewRef === true && entry.concept.targetViewId;
-    var selectorId = isViewRef
-      ? 'id-' + String(entry.concept.targetViewId)
-      : 'selected-element-' + view.id + '-' + conceptId;
-    var percent = boundsToPercent(entry, extents);
-    if(!percent) return;
-
-    hotspotEntries.push({
-      selectorId: selectorId,
-      elementName: _.escape(entry.concept.name || ''),
-      left: percent.left,
-      top: percent.top,
-      width: percent.width,
-      height: percent.height,
-      isViewRef: isViewRef,
-      area: entry.width * entry.height,
-      debugText: 'px[' + entry.x + ',' + entry.y + ' ' + entry.width + 'x' + entry.height + '] %[' + percent.left + ',' + percent.top + ' ' + percent.width + 'x' + percent.height + ']'
-    });
-
-    if(!isViewRef && !seenConcepts[conceptId]) {
-      seenConcepts[conceptId] = true;
-      panels += tplViewElementPanel({
-        selectorId: selectorId,
-        selectorName: selectorName,
-        noneSelectorId: noneSelectorId,
-        elementName: _.escape(entry.concept.name || '(Unnamed)'),
-        elementType: properCase(String(entry.concept.type || '')),
-        elementDocumentationText: _.escape(entry.concept.documentation || '').replace(/\n/g, '<br>'),
-        elementDocumentationMarkdown: marked(_.escape(entry.concept.documentation || ''), mdOptions)
-      });
-    }
-  });
-
-  hotspotEntries = _.sortBy(hotspotEntries, function(h) { return -h.area; });
-  var standardHotspots = [];
-  var viewRefHotspots = [];
-  _.each(hotspotEntries, function(h) {
-    if(h.isViewRef) viewRefHotspots.push(h);
-    else standardHotspots.push(h);
-  });
-  hotspotEntries = standardHotspots.concat(viewRefHotspots);
-  var hotspotTemplate = debugHotspots ? tplViewHotspotDebug : tplViewHotspotCompact;
-  _.each(hotspotEntries, function(h, index) {
-    hotspots += hotspotTemplate({
-      selectorId: h.selectorId,
-      elementName: h.elementName,
-      left: h.left,
-      top: h.top,
-      width: h.width,
-      height: h.height,
-      zIndex: 10 + index,
-      debugText: h.debugText
-    });
-  });
-
-  return {
-    selectorName: selectorName,
-    noneSelectorId: noneSelectorId,
-    hotspots: hotspots,
-    panels: panels
-  };
-}
-
-function collectEntriesRecursive(diagramElement, offsetX, offsetY, zoom, entries, currentViewId) {
-  if(!diagramElement || !diagramElement.bounds) return;
-
-  var localX = toNumber(diagramElement.bounds.x);
-  var localY = toNumber(diagramElement.bounds.y);
-  var localW = toNumber(diagramElement.bounds.width);
-  var localH = toNumber(diagramElement.bounds.height);
-  if(localX === null || localY === null || localW === null || localH === null) return;
-  if(localW <= 0 || localH <= 0) return;
-
-  var x = toInt(localX * zoom) + offsetX;
-  var y = toInt(localY * zoom) + offsetY;
-  var w = toInt(localW * zoom);
-  var h = toInt(localH * zoom);
-  if(w <= 0 || h <= 0) return;
-
-  var children = [];
-  $(diagramElement).children().filter(o => isDiagramNodeHotspotCandidate(o)).each(function(child) {
-    children.push(child);
-  });
-  for(var i = children.length - 1; i >= 0; i--) {
-    var child = children[i];
-    var childOffsetX = x;
-    var childOffsetY = y;
-    if(!isChildBoundsRelativeToParent(child, localW, localH)) {
-      // Some nested elements already carry absolute view coordinates.
-      childOffsetX = 0;
-      childOffsetY = 0;
-    }
-    collectEntriesRecursive(child, childOffsetX, childOffsetY, zoom, entries, currentViewId);
-  }
-
-  entries.push({
-    concept: getDiagramNodeHotspotTarget(diagramElement, currentViewId),
-    x1: x,
-    y1: y,
-    x2: x + w,
-    y2: y + h
-  });
-}
-
-function isDiagramNodeHotspotCandidate(diagramElement) {
-  if(!diagramElement || !diagramElement.type) return false;
-  if(isViewReferenceDiagramType(diagramElement.type)) return true;
-  return !isRelationshipDiagramType(diagramElement.type);
-}
-
-function isRelationshipDiagramType(type) {
-  if(!type) return false;
-  return String(type).toLowerCase().indexOf('relationship') !== -1;
-}
-
-function isViewReferenceDiagramType(type) {
-  if(!type) return false;
-  return String(type).toLowerCase() === 'archimate-diagram-model';
-}
-
-function getDiagramNodeHotspotTarget(diagramElement, currentViewId) {
-  if(!diagramElement) return null;
-  if(diagramElement.concept && diagramElement.concept.id) return diagramElement.concept;
-  if(!isViewReferenceDiagramType(diagramElement.type)) return null;
-
-  // For view references, the displayed label usually matches the referenced view name.
-  // Prefer this mapping to avoid API fields that often resolve to the current/source view.
-  var targetViewId = resolveViewIdByName(diagramElement.name, currentViewId);
-  if(!targetViewId) {
-    targetViewId = resolveReferencedViewId(diagramElement, currentViewId);
-  }
-  if(!targetViewId) {
-    return null;
-  }
-  var referencedViewName = getViewNameById(targetViewId);
-  return {
-    id: 'viewref-' + String(diagramElement.id || targetViewId || ''),
-    name: referencedViewName || diagramElement.name || '(View Reference)',
-    type: 'view-reference',
-    isViewRef: true,
-    targetViewId: String(targetViewId),
-    documentation: ''
-  };
-}
-
-var viewNameById = null;
-function ensureViewNameByIdLoaded() {
-  if(viewNameById) return;
-  viewNameById = {};
-  $(model).find('view').each(function(v) {
-    if(v && v.id) viewNameById[String(v.id)] = v.name || '';
-  });
-}
-
-function getViewNameById(viewId) {
-  if(!viewId) return null;
-  ensureViewNameByIdLoaded();
-  return viewNameById[String(viewId)] || null;
-}
-
-function hasViewId(viewId) {
-  if(!viewId) return false;
-  ensureViewNameByIdLoaded();
-  return Object.prototype.hasOwnProperty.call(viewNameById, String(viewId));
-}
-
-function resolveReferencedViewId(diagramElement, currentViewId) {
-  if(!diagramElement) return null;
-  var candidates = [
-    diagramElement.referencedView,
-    diagramElement.referencedModel,
-    diagramElement.viewRef,
-    diagramElement.view,
-    diagramElement.model,
-    diagramElement.targetView,
-    diagramElement.target
-  ];
-
-  var fallbackCurrent = null;
-  for(var i = 0; i < candidates.length; i++) {
-    var id = extractPotentialViewId(candidates[i]);
-    if(!id || !hasViewId(id)) continue;
-    if(currentViewId && String(id) === String(currentViewId)) {
-      if(!fallbackCurrent) fallbackCurrent = String(id);
-      continue;
-    }
-    return String(id);
-  }
-
-  // Generic fallback: inspect object graph to find any value matching a known view id.
-  var deepId = resolveReferencedViewIdDeep(diagramElement, currentViewId);
-  if(deepId) return deepId;
-
-  // Fallback by name when API exposes only the referenced view label.
-  var nameCandidates = [
-    extractPotentialViewName(diagramElement.referencedView),
-    extractPotentialViewName(diagramElement.referencedModel),
-    extractPotentialViewName(diagramElement.viewRef),
-    extractPotentialViewName(diagramElement.view),
-    extractPotentialViewName(diagramElement.model),
-    extractPotentialViewName(diagramElement.targetView),
-    extractPotentialViewName(diagramElement.target),
-    extractPotentialViewName(diagramElement)
-  ];
-  for(var j = 0; j < nameCandidates.length; j++) {
-    var name = nameCandidates[j];
-    var byNameId = resolveViewIdByName(name, currentViewId);
-    if(byNameId) return byNameId;
-  }
-
-  // If we only resolved the current view, ignore this viewRef hotspot:
-  // selecting the same radio is a no-op and feels broken for users.
-  if(fallbackCurrent) return null;
-  return null;
-}
-
-function extractPotentialViewId(candidate) {
-  if(!candidate) return null;
-  try {
-    if(typeof candidate === 'string') return String(candidate);
-    if(candidate.id) return String(candidate.id);
-    if(candidate.ref && candidate.ref.id) return String(candidate.ref.id);
-  }
-  catch(err) {}
-  return null;
-}
-
-function extractPotentialViewName(candidate) {
-  if(!candidate) return null;
-  try {
-    if(typeof candidate === 'string') return null;
-    if(candidate.name) return String(candidate.name);
-    if(candidate.ref && candidate.ref.name) return String(candidate.ref.name);
-  }
-  catch(err) {}
-  return null;
-}
-
-var viewIdByName = null;
-function ensureViewIdByNameLoaded() {
-  if(viewIdByName) return;
-  viewIdByName = {};
-  $(model).find('view').each(function(v) {
-    if(!v || !v.id || !v.name) return;
-    var key = String(v.name);
-    if(!viewIdByName[key]) viewIdByName[key] = [];
-    viewIdByName[key].push(String(v.id));
-  });
-}
-
-function resolveViewIdByName(viewName, currentViewId) {
-  if(!viewName) return null;
-  ensureViewIdByNameLoaded();
-  var ids = viewIdByName[String(viewName)];
-  if(!ids || !ids.length) return null;
-  if(ids.length === 1) return ids[0];
-  for(var i = 0; i < ids.length; i++) {
-    if(!currentViewId || String(ids[i]) !== String(currentViewId)) return ids[i];
-  }
-  return ids[0];
-}
-
-function resolveReferencedViewIdDeep(diagramElement, currentViewId) {
-  var visited = [];
-  var best = null;
-  var bestScore = -999999;
-
-  function seen(obj) {
-    for(var i = 0; i < visited.length; i++) {
-      if(visited[i] === obj) return true;
-    }
-    return false;
-  }
-
-  function scoreForKey(key) {
-    var k = String(key || '').toLowerCase();
-    var score = 0;
-    if(k.indexOf('referenced') !== -1) score += 6;
-    if(k.indexOf('target') !== -1) score += 5;
-    if(k.indexOf('view') !== -1) score += 5;
-    if(k.indexOf('model') !== -1) score += 2;
-    if(k === 'id') score += 1;
-    return score;
-  }
-
-  function consider(id, score) {
-    if(!id || !hasViewId(id)) return;
-    var s = score;
-    if(currentViewId && String(id) === String(currentViewId)) s -= 100;
-    if(s > bestScore) {
-      bestScore = s;
-      best = String(id);
-    }
-  }
-
-  function visit(value, depth, keyHint) {
-    if(value === null || value === undefined) return;
-    if(depth > 3) return;
-    var t = typeof value;
-    if(t === 'string') {
-      consider(String(value), scoreForKey(keyHint));
-      return;
-    }
-    if(t !== 'object' && t !== 'function') return;
-    if(seen(value)) return;
-    visited.push(value);
-
-    try {
-      if(value.id) {
-        consider(String(value.id), scoreForKey(keyHint) + 1);
-      }
-      if(value.ref && value.ref.id) {
-        consider(String(value.ref.id), scoreForKey(keyHint) + 2);
-      }
-    }
-    catch(err) {}
-
-    var props = [
-      'referencedView', 'referencedModel', 'viewRef', 'view', 'model', 'targetView', 'target',
-      'ref', 'id'
-    ];
-    for(var i = 0; i < props.length; i++) {
-      var p = props[i];
-      try {
-        if(value[p] !== undefined && value[p] !== null) {
-          visit(value[p], depth + 1, p);
-        }
-      }
-      catch(err) {}
-    }
-  }
-
-  visit(diagramElement, 0, 'root');
-  if(!best) return null;
-  if(currentViewId && String(best) === String(currentViewId)) return null;
-  return best;
-}
-
-function isChildBoundsRelativeToParent(childElement, parentWidth, parentHeight) {
-  if(!childElement || !childElement.bounds) return false;
-  var x = toNumber(childElement.bounds.x);
-  var y = toNumber(childElement.bounds.y);
-  var w = toNumber(childElement.bounds.width);
-  var h = toNumber(childElement.bounds.height);
-  if(x === null || y === null || w === null || h === null) return false;
-  if(w <= 0 || h <= 0) return false;
-  var tolerance = 1;
-  return x >= -tolerance &&
-    y >= -tolerance &&
-    (x + w) <= (parentWidth + tolerance) &&
-    (y + h) <= (parentHeight + tolerance);
-}
-
-function calculateIntBounds(entries) {
-  if(!entries || !entries.length) return null;
-  var minX = null, minY = null, maxX = null, maxY = null;
-  _.each(entries, function(e) {
-    if(minX === null || e.x1 < minX) minX = e.x1;
-    if(minY === null || e.y1 < minY) minY = e.y1;
-    if(maxX === null || e.x2 > maxX) maxX = e.x2;
-    if(maxY === null || e.y2 > maxY) maxY = e.y2;
-  });
-  if(minX === null || minY === null || maxX === null || maxY === null) return null;
-  return {
-    minX: minX,
-    minY: minY,
-    width: maxX - minX,
-    height: maxY - minY
-  };
-}
-
 function readImageSize(imageFile) {
   try {
     if(!imageFile || !imageFile.exists()) return null;
@@ -793,173 +359,4 @@ function readImageSize(imageFile) {
     console.log('Unable to read image size for view export: ', err);
     return null;
   }
-}
-
-function calculateExtents(entries) {
-  if(!entries || !entries.length) return null;
-  var minX = null, minY = null, maxX = null, maxY = null;
-  _.each(entries, function(entry) {
-    if(minX === null || entry.x < minX) minX = entry.x;
-    if(minY === null || entry.y < minY) minY = entry.y;
-    if(maxX === null || (entry.x + entry.width) > maxX) maxX = entry.x + entry.width;
-    if(maxY === null || (entry.y + entry.height) > maxY) maxY = entry.y + entry.height;
-  });
-  if(minX === null || minY === null || maxX === null || maxY === null) return null;
-  var width = maxX - minX;
-  var height = maxY - minY;
-  if(width <= 0 || height <= 0) return null;
-  return { minX: minX, minY: minY, width: width, height: height };
-}
-
-function boundsToPercent(bounds, extents) {
-  if(!bounds || !extents) return null;
-  var left = ((bounds.x - extents.minX) * 100) / extents.width;
-  var top = ((bounds.y - extents.minY) * 100) / extents.height;
-  var width = (bounds.width * 100) / extents.width;
-  var height = (bounds.height * 100) / extents.height;
-  return {
-    left: round2(clampPercent(left)),
-    top: round2(clampPercent(top)),
-    width: round2(clampPercent(width)),
-    height: round2(clampPercent(height))
-  };
-}
-
-function clampPercent(v) {
-  if(v < 0) return 0;
-  if(v > 100) return 100;
-  return v;
-}
-
-function round2(v) {
-  return Math.round(v * 100) / 100;
-}
-
-function toNumber(value) {
-  var n = Number(value);
-  if(isNaN(n)) return null;
-  return n;
-}
-
-function getHotspotZoomFactorFromArchiPreference() {
-  try {
-    var scaleImageExport = ArchiPlugin.getInstance()
-      .getPreferenceStore()
-      .getBoolean(IPreferenceConstants.SCALE_IMAGE_EXPORT);
-    return scaleImageExport ? 2 : 1;
-  }
-  catch(err) {
-    console.error('impossible to retrieve SCALE_IMAGE_EXPORT pref ! so use zoomFactor to 2')
-    return 2;
-  }
-}
-
-function toInt(value) {
-  var n = Number(value);
-  if(isNaN(n)) return 0;
-  if(n < 0) return Math.ceil(n);
-  return Math.floor(n);
-}
-
-function getDefaultExportDirectoryPath() {
-  var exportsRoot = getExportsRootDirectory();
-  if(!exportsRoot.exists()) exportsRoot.mkdirs();
-  return new File(exportsRoot, sanitizeFileName(String(model.name || 'model'))).getPath();
-}
-
-function getExportsRootDirectory() {
-  var dataLocation = resolveDataLocationPath();
-  if(dataLocation) {
-    return new File(dataLocation, 'exports');
-  }
-  return new File(System.getProperty('user.home'), 'exports');
-}
-
-function resolveDataLocationPath() {
-  var raw = System.getProperty('data.location');
-  if(!raw) return null;
-  raw = String(raw).trim();
-  if(!raw) return null;
-
-  if(raw.indexOf('@user.home') === 0) {
-    raw = System.getProperty('user.home') + raw.substring('@user.home'.length);
-  }
-
-  if(raw.indexOf('file:') === 0) {
-    try {
-      return new File(new URI(raw)).getPath();
-    }
-    catch(err) {
-      return raw.substring('file:'.length);
-    }
-  }
-
-  return raw;
-}
-
-function getExportPreferencesFile() {
-  var configArea = resolveConfigurationAreaPath();
-  var configDir = configArea ? new File(configArea) : new File(System.getProperty('user.home'));
-  if(!configDir.exists()) configDir.mkdirs();
-  return new File(configDir, '.exportSinglePage');
-}
-
-function resolveConfigurationAreaPath() {
-  var raw = System.getProperty('osgi.configuration.area');
-  if(!raw) return null;
-  raw = String(raw).trim();
-  if(!raw) return null;
-
-  if(raw.indexOf('@user.home') === 0) {
-    raw = System.getProperty('user.home') + raw.substring('@user.home'.length);
-  }
-
-  if(raw.indexOf('file:') === 0) {
-    try {
-      return new File(new URI(raw)).getPath();
-    }
-    catch(err) {
-      return raw.substring('file:'.length);
-    }
-  }
-
-  return raw;
-}
-
-function readExportPreferences(preferencesFile) {
-  try {
-    if(preferencesFile && preferencesFile.exists() && preferencesFile.isFile()) {
-      var bytes = Files.readAllBytes(Paths.get(preferencesFile.getPath()));
-      var content = String(new java.lang.String(bytes, StandardCharsets.UTF_8)).trim();
-      if(content) return JSON.parse(content);
-    }
-  }
-  catch(err) {
-    console.log('Unable to read export preferences: ', err);
-  }
-  return {};
-}
-
-function writeExportPreferences(preferencesFile, allPreferences) {
-  try {
-    var parent = preferencesFile.getParentFile();
-    if(parent && !parent.exists()) parent.mkdirs();
-    Files.write(
-      Paths.get(preferencesFile.getPath()),
-      JSON.stringify(allPreferences, null, 2).getBytes(StandardCharsets.UTF_8)
-    );
-  }
-  catch(err) {
-    console.log('Unable to write export preferences: ', err);
-  }
-}
-
-function getModelPreferenceKey() {
-  if(model && model.id) return 'id:' + String(model.id);
-  return 'name:' + String(model.name || 'model');
-}
-
-function sanitizeFileName(value) {
-  var sanitized = String(value || '').replace(/[\\\/:\*\?"<>\|]/g, '_').trim();
-  return sanitized || 'model';
 }

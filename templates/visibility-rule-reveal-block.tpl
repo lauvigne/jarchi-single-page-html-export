@@ -1,1 +1,1 @@
-, #{{viewId}}:checked ~ * .view-element-sidebar .{{viewId}}
+, #{{viewId}}:checked ~ * .view-component.{{viewId}}

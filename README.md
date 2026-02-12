@@ -14,6 +14,36 @@ To use it, simply download the archive from the [latest release](https://github.
 
 Mardown rendering of documentations is `on` by default. You can set it `off` in the "Preferences" dialog (cog icon on top right).
 
+## Architecture (current)
+
+The export is now organized around a **view component pipeline**:
+
+1. `buildViewModel(view)` prepares data for one view (id, name, image path, image size, documentation).
+2. `renderViewComponent(viewModel)` produces one autonomous HTML component (`templates/view-component.tpl`) including:
+   - diagram image
+   - hotspots
+   - viewRef navigation
+   - element detail panels
+   - documentation
+3. `aggregateRenderedViewComponents(...)` assembles all generated view components and related radio/CSS rules.
+
+### Helper modules in `libs/`
+
+- `libs/hotspot-geometry.js`
+  - hotspot geometry/normalization
+  - recursive diagram traversal
+  - panel generation for selected elements
+- `libs/viewref-resolution.js`
+  - target view resolution for `archimate-diagram-model` nodes
+  - direct candidate resolution + deep fallback + name fallback
+- `libs/export-preferences.js`
+  - export directory defaults
+  - persisted preferences read/write
+  - model preference key
+  - Archi preference mapping (`SCALE_IMAGE_EXPORT` -> zoom factor)
+
+This keeps `Generate Single-page HTML Export.ajs` focused on orchestration and report assembly.
+
 Copyright (c) 2020 Phillip Beauvoir & Jean-Baptiste Sarrodie
 
 >Permission is hereby granted, free of charge, to any person

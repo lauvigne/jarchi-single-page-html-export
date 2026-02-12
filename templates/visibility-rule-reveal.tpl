@@ -1,1 +1,1 @@
-, #{{viewId}}:checked ~ * .{{viewId}}
+, #{{viewId}}:checked ~ * .view-data-row.{{viewId}}

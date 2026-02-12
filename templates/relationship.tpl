@@ -1,4 +1,4 @@
-<tr class="hidden id-model {{viewsIds}}">
+<tr class="hidden view-data-row id-model {{viewsIds}}">
 	<td>{{relationshipName}}
 	<td>{{relationshipType}}
 	<td>{{relationshipSource}}

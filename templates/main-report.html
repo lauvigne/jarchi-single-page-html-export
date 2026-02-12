@@ -13,8 +13,8 @@ Copyright (c) 2020 Phillip Beauvoir & Jean-Baptiste Sarrodie - MIT License
 		<meta http-equiv="X-UA-Compatible" content="IE=edge" />
     <title>{{modelTitle}}</title>
     <base href="{{baseHref}}">
-
 <!--
+    External CSS alternative:
     <link rel="stylesheet" href="../resources/roboto.css">
     <link rel="stylesheet" href="../resources/icon.css">
     <link rel="stylesheet" href="../resources/picnic-custom.css">
@@ -285,10 +285,6 @@ Copyright (c) 2020 Phillip Beauvoir & Jean-Baptiste Sarrodie - MIT License
 		  	margin: 0;
 		  	padding: 0;
 		  }
-		  .views img {
-					max-width: 100%;
-					margin-top: {{mainMargin}};	/* only set top margin because bottom is set by tabs */
-				}
         .view-diagram-block {
           margin-top: {{mainMargin}};
         }
@@ -368,29 +364,11 @@ Copyright (c) 2020 Phillip Beauvoir & Jean-Baptiste Sarrodie - MIT License
         .view-element-panel h4 {
           margin: 0 0 8px 0;
         }
-        .view-element-sidebar {
-          margin-top: 16px;
-          padding-bottom: 24px;
-          width: 100%;
-          min-width: 0;
+        .view-component {
+          margin-top: {{mainMargin}};
         }
-        .sidebar .view-element-selector {
-          margin-top: 8px;
-          width: 100%;
-          max-width: 100%;
-          min-width: 0;
-        }
-        .sidebar .view-element-selector > .view-element-panel {
-          background: #f7f9fb;
-          color: #222;
-          border: 1px solid #c7d0d9;
-          width: 100%;
-          max-width: 100%;
-          box-sizing: border-box;
-          margin: 0;
-        }
-        .sidebar .view-element-selector .button.small {
-          margin-top: 8px;
+        .view-component-body {
+          margin-top: {{mainMargin}};
         }
 
 /* Tree */
@@ -453,33 +431,32 @@ Copyright (c) 2020 Phillip Beauvoir & Jean-Baptiste Sarrodie - MIT License
 			{{visibilityRulesBold}} {
 				font-weight: 700;				/* selected view label is bold in tree */
 			}
-			#id-model:checked ~ * .id-model
+			#id-model:checked ~ * .view-data-row.id-model
 			{{visibilityRulesReveal}} {
 				display: table-row;			/* has to be table-row because we use it to reveal rows */
 			}
-			#id-model:checked ~ * .view-element-sidebar .id-model
+			#id-model:checked ~ * .view-component.id-model
 			{{visibilityRulesRevealBlock}} {
-				display: block;					/* view element panel must be block in sidebar */
+				display: block;
 			}
 	  </style>
   </head>
-	<body class="{{debugHotspotsClass}}">
-		<!-- All inputs must be at the begining of the page (CSS rules uses 'input ~ *' selector) -->
-		<!-- Radio inputs used to select the current 'mode' (View Visualizer, Query Tool, DataVisualization) -->
+	<body{{bodyClassAttr}}>
+		<!--
+		  All inputs must be defined at root level because visibility relies on `input ~ *` selectors.
+		-->
+		<!-- Current navigation mode -->
 	  <input id='views'   class="hidden" type='radio' name='nav' checked>
 	  <input id='queries' class="hidden" type='radio' name='nav'>
 	  <input id='dataviz' class="hidden" type='radio' name='nav'>
-		<!-- Checkbox used to show/hide the sidebar -->
-		<input id="sidebar" class="hidden" type="checkbox" checked>
-		<!-- Checkbox used to enable/disable markdown rendering for documentation -->
-		<input id="markdown" class="hidden" type="checkbox" checked>
-
-		<!-- One checkbox per view -->
-		<input id='id-model' type='radio' name='views' checked>
-		{{inputCheckbox}}
-
-		<!-- Modal dialogs -->
-		<div class="modal">
+		<!-- Sidebar and markdown toggles -->
+			<input id="sidebar" class="hidden" type="checkbox" checked>
+			<input id="markdown" class="hidden" type="checkbox" checked>
+		<!-- One radio input per exported view -->
+			<input id='id-model' type='radio' name='views' checked>
+			{{inputCheckbox}}
+		<!-- Preferences modal -->
+			<div class="modal">
 			<input id="preferences" type="checkbox">
 			<label for="preferences" class="overlay"></label>
 			<div>
@@ -505,8 +482,8 @@ Copyright (c) 2020 Phillip Beauvoir & Jean-Baptiste Sarrodie - MIT License
 			</div>
 		</div>
 
-		<!-- Report eally starts here with the sidebar -->
-		<aside class="sidebar">
+		<!-- Sidebar -->
+			<aside class="sidebar">
 			<label for="sidebar" id="hide-sidebar" class="icon close"></label>
 				<nav class="secondary views">
 					<header class="top-header">
@@ -515,10 +492,7 @@ Copyright (c) 2020 Phillip Beauvoir & Jean-Baptiste Sarrodie - MIT License
 					<div class="tree">
 						{{treeContent}}
 					</div>
-          <div class="view-element-sidebar">
-            {{viewElementSelectors}}
-          </div>
-				</nav>
+					</nav>
 			<nav class="secondary queries">
 				<header class="top-header">
 					<h3>Query</h3>
@@ -546,7 +520,8 @@ Copyright (c) 2020 Phillip Beauvoir & Jean-Baptiste Sarrodie - MIT License
 			</nav>
 		</aside>
 
-		<header id="main-header" class="top-header expandable">
+		<!-- Main header -->
+			<header id="main-header" class="top-header expandable">
 			<label for="sidebar" id="show-sidebar" class="icon menu"></label>
 			<label for="id-model">
 				<h3 class="title">{{modelTitle}}</h3>
@@ -555,33 +530,29 @@ Copyright (c) 2020 Phillip Beauvoir & Jean-Baptiste Sarrodie - MIT License
 			<label for="preferences" id="show-preferences" class="icon gear"></label>
 		</header>
 
-		<main class="expandable">
-			<article class="views">
-				<header>
-					<h2 class="hidden id-model">{{modelTitle}}</h2>
-					{{viewTitles}}
-				</header>
-
-				<img class="hidden id-model"/>
-				{{viewDiagrams}}
-
-				<div class="tabs three">
+		<!-- Main content -->
+			<main class="expandable">
+				<article class="views">
+					<!-- Views / Elements / Relationships tabs -->
+					<div class="tabs three">
 					<input id='view-documentation' type='radio' name='view-detail' checked />
-					<label for="view-documentation" class="pointer">Documentation</label>
+					<label for="view-documentation" class="pointer">Views</label>
 					<input id='view-elements' type='radio' name='view-detail'>
 					<label for="view-elements" class="pointer">Elements</label>
 					<input id='view-relationships' type='radio' name='view-detail'>
 					<label for="view-relationships" class="pointer">Relationships</label>
-					<div class="row">
-						<div>
-							<div class="hidden id-model">
+						<div class="row">
+							<!-- Current view component -->
+							<div>
+							<article class="hidden view-component id-model">
+								<h2>{{modelTitle}}</h2>
 								<div class="txt">{{modelPurposeText}}</div>
 								<div class="md">{{modelPurposeMarkdown}}</div>
-							</div>
-							{{viewDocumentations}}
+							</article>
+							{{viewComponents}}
 						</div>
-
-						<div>
+							<!-- Elements table -->
+							<div>
 							<table class="full fixed">
 								<thead>
 									<tr>
@@ -592,8 +563,8 @@ Copyright (c) 2020 Phillip Beauvoir & Jean-Baptiste Sarrodie - MIT License
 									{{elements}}
 							</table>
 						</div>
-
-						<div>
+							<!-- Relationships table -->
+							<div>
 							<table class="full fixed">
 								<thead><tr>
 									<th class="sixth">Name
