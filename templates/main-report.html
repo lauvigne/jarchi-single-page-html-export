@@ -233,7 +233,11 @@ Copyright (c) 2020 Phillip Beauvoir & Jean-Baptiste Sarrodie - MIT License
 				   we remove it from left margin and we set a negative right margin */
 				margin-left: calc({{mainMargin}} - 10px);
 				margin-right: calc(-1 * ({{mainMargin}} - 10px));
+        font-size: 21px;
 		  }
+      #hide-sidebar {
+        font-size: 21px;
+      }
 		  #sidebar:checked ~ * #show-sidebar {
 		  	display: none;
 		  }
@@ -447,12 +451,13 @@ Copyright (c) 2020 Phillip Beauvoir & Jean-Baptiste Sarrodie - MIT License
           position: absolute;
           top: 8px;
           right: 8px;
-          width: 24px;
-          height: 24px;
+          width: 20px;
+          height: 20px;
           text-align: center;
           color: #546e7a;
           cursor: pointer;
-          line-height: 24px;
+          line-height: 20px;
+          font-size: 16px;
         }
         .view-element-panel-close:hover {
           color: #263238;
