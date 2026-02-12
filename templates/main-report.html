@@ -351,13 +351,23 @@ Copyright (c) 2020 Phillip Beauvoir & Jean-Baptiste Sarrodie - MIT License
         .view-element-selector > .view-element-panel {
           display: none;
           position: absolute;
-          inset: 0;
+          top: 0;
+          right: 0;
+          bottom: 0;
+          width: 100%;
+          min-width: 300px;
+          max-width: 80vw;
           padding: 14px 16px 16px 16px;
           border-left: 1px solid #d5d5d5;
           background: #ffffff;
           overflow: auto;
+          resize: horizontal;
+          direction: rtl;
           pointer-events: auto;
           box-shadow: -8px 0 16px rgba(0, 0, 0, 0.12);
+        }
+        .view-element-selector > .view-element-panel > * {
+          direction: ltr;
         }
         .view-element-selector > input:checked + .view-element-panel {
           display: block;
