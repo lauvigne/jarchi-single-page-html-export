@@ -92,7 +92,6 @@ Copyright (c) 2020 Phillip Beauvoir & Jean-Baptiste Sarrodie - MIT License
 			/* icon font uses ligature which makes it easier to select icon */
 		  .icon.menu::before { content: "\f0c9"; }	/* navicon */
 		  .icon.close::before { content: "\f00d"; }	/* close */
-		  .icon.gear::before { content: "\f013"; }	/* cog */
 		  .icon.book::before { content: "\f02d"; }	/* book */
 		  .icon.table::before { content: "\f0ce"; }	/* table */
 		  .icon.chart::before { content: "\f080"; }	/* bar-chart */
@@ -244,12 +243,6 @@ Copyright (c) 2020 Phillip Beauvoir & Jean-Baptiste Sarrodie - MIT License
 				   only because 'show-sidebar' icon has a negative right margin */
 				margin-left: {{mainMargin}};
 			}
-		  #show-preferences {
-		  	/* visual space inside icon (~10px) should be taken into account so
-				   we remove it from right margin */
-				margin-right: calc({{mainMargin}} - 10px);
-		  }
-
 /* Main-section Style */
 			#main-header {
 				background-color: {{headerBgColor}};
@@ -434,30 +427,6 @@ Copyright (c) 2020 Phillip Beauvoir & Jean-Baptiste Sarrodie - MIT License
 		<!-- One radio input per exported view -->
 			<input id='id-model' type='radio' name='views' checked>
 			{{inputCheckbox}}
-		<!-- Preferences modal -->
-			<div class="modal">
-			<input id="preferences" type="checkbox">
-			<label for="preferences" class="overlay"></label>
-			<div>
-				<header>
-				  <h3>Preferences</h3>
-				  <label for="preferences" class="close">&times;</label>
-				</header>
-				<section style="min-width:500px;min-height:100px;">
-					<div class="flex" >
-						<div class="four-fifth">
-							Markdown rendering mode is configured at export generation time.
-						</div>
-					</div>
-				</section>
-				<footer>
-				  <label for="preferences" class="button right">
-				    OK
-				  </label>
-				</footer>
-			</div>
-		</div>
-
 		<!-- Sidebar -->
 			<aside class="sidebar">
 			<label for="sidebar" id="hide-sidebar" class="icon close"></label>
@@ -502,8 +471,6 @@ Copyright (c) 2020 Phillip Beauvoir & Jean-Baptiste Sarrodie - MIT License
 			<label for="id-model">
 				<h3 class="title">{{modelTitle}}</h3>
 			</label>
-			<span class="spacer"></span>
-			<label for="preferences" id="show-preferences" class="icon gear"></label>
 		</header>
 
 		<!-- Main content -->
