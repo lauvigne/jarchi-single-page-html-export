@@ -358,26 +358,3 @@ function boundsToPercent(bounds, extents) {
     height: round2(clampPercent(height))
   };
 }
-
-function clampPercent(v) {
-  if(v < 0) return 0;
-  if(v > 100) return 100;
-  return v;
-}
-
-function round2(v) {
-  return Math.round(v * 100) / 100;
-}
-
-function toNumber(value) {
-  var n = Number(value);
-  if(isNaN(n)) return null;
-  return n;
-}
-
-function toInt(value) {
-  var n = Number(value);
-  if(isNaN(n)) return 0;
-  if(n < 0) return Math.ceil(n);
-  return Math.floor(n);
-}

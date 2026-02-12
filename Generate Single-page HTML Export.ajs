@@ -381,15 +381,6 @@ console.log('HTML report: ', indexFilePath);
 console.log('Images folder: ', imagesDirectory.getPath());
 console.log('Export terminated.');
 
-function properCase(str) {
-  return str.replace(
-    /\w*/g,
-    function(txt) {
-      return txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase();
-    }
-  ).replace('-', ' ');
-}
-
 function renderDocumentationContent(rawDocumentation) {
   if(!rawDocumentation || !String(rawDocumentation).trim()) return '';
   var escaped = _.escape(rawDocumentation || '');
@@ -501,15 +492,6 @@ function minifyInlineCssBlocks(html) {
   });
 }
 
-function minifyCssText(css) {
-  return String(css || '')
-    .replace(/\/\*[\s\S]*?\*\//g, '')
-    .replace(/\s*([{}:;,>+~])\s*/g, '$1')
-    .replace(/;}/g, '}')
-    .replace(/\s+/g, ' ')
-    .trim();
-}
-
 function getViewDomId(rawViewId) {
   return getShortDomId('v', rawViewId);
 }
@@ -529,10 +511,6 @@ function getShortDomId(kindPrefix, rawId) {
     domIdMap[key] = String(kindPrefix) + toBase36(domIdCounter);
   }
   return domIdMap[key];
-}
-
-function toBase36(n) {
-  return Number(n).toString(36);
 }
 
 function logExportStats(label, html) {
