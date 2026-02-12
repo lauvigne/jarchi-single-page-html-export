@@ -114,7 +114,6 @@ Copyright (c) 2020 Phillip Beauvoir & Jean-Baptiste Sarrodie - MIT License
 		  .tabs > .row {
 		  	text-align: left;						/* tabs' content is left aligned (needed because tabs are centered) */
 				margin-top: 18px;						/* must be equal to tabs' header bottom padding */
-				padding-top: 25px;					/* set some space above tabs' content */
 				border-top: 1px solid #e0e0e0;	/* draw a line between tabs' headers and tabs' content */
 				transition: none;						/* no transition */
 			}
@@ -276,7 +275,7 @@ Copyright (c) 2020 Phillip Beauvoir & Jean-Baptiste Sarrodie - MIT License
 		  	padding: 0;
 		  }
         .view-diagram-block {
-          margin-top: {{mainMargin}};
+          margin-top: 0;
         }
         .view-diagram-container {
           position: relative;
@@ -377,7 +376,6 @@ Copyright (c) 2020 Phillip Beauvoir & Jean-Baptiste Sarrodie - MIT License
         }
         .view-element-tabs {
           margin-top: 10px;
-          text-align: center;
         }
         .view-element-tabs > label {
           width: 50%;
@@ -393,11 +391,6 @@ Copyright (c) 2020 Phillip Beauvoir & Jean-Baptiste Sarrodie - MIT License
         .view-element-tabs > .row {
           width: 200%;
           left: -100%;
-          text-align: left;
-          margin-top: 18px;
-          padding-top: 25px;
-          border-top: 1px solid #e0e0e0;
-          transition: none;
         }
         .view-element-selector > #selected-element-panel-tab-doc:checked ~ .view-element-panel .view-element-tabs > .row {
           margin-left: 100%;
@@ -409,6 +402,7 @@ Copyright (c) 2020 Phillip Beauvoir & Jean-Baptiste Sarrodie - MIT License
           width: 100%;
           border-collapse: collapse;
           table-layout: fixed;
+          font-size: 0.9em;
         }
         .view-properties-table th,
         .view-properties-table td {
@@ -433,6 +427,22 @@ Copyright (c) 2020 Phillip Beauvoir & Jean-Baptiste Sarrodie - MIT License
           font-style: italic;
           margin: 4px 0 0 0;
         }
+        .view-element-panel .view-element-panel-doc,
+        .view-element-panel .view-element-panel-props {
+          font-size: 0.9em;
+          line-height: 1.35;
+        }
+        .views .tabs.three > .row > div:nth-child(2) table,
+        .views .tabs.three > .row > div:nth-child(3) table {
+          font-size: 0.9em;
+          line-height: 1.3;
+        }
+        .views .tabs.three > .row > div:nth-child(2) th,
+        .views .tabs.three > .row > div:nth-child(2) td,
+        .views .tabs.three > .row > div:nth-child(3) th,
+        .views .tabs.three > .row > div:nth-child(3) td {
+          padding: 0.2em 0.6em 0.2em 0.45em;
+        }
         .view-element-panel-close {
           position: absolute;
           top: 8px;
@@ -448,7 +458,7 @@ Copyright (c) 2020 Phillip Beauvoir & Jean-Baptiste Sarrodie - MIT License
           color: #263238;
         }
         .view-component {
-          margin-top: {{mainMargin}};
+          margin-top: 0;
         }
         .view-component-body {
           margin-top: {{mainMargin}};
