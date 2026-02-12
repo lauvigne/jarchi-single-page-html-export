@@ -38,6 +38,7 @@
 const USE_REQUIRE = true;
 
 load(__DIR__ + 'libs/nashorn-polyfills.js');
+load(__DIR__ + 'libs/utils.js');
 
 if(USE_REQUIRE) {
   _ = require(__DIR__ + "libs/underscore-min.js");
@@ -50,6 +51,7 @@ else {
 
 console.show();
 console.clear();
+ensureActiveModelOrExit(model, 'No active model selected. Open/select a model, then run the export again.');
 
 // Use Mustache.js-style templating
 _.templateSettings = {
