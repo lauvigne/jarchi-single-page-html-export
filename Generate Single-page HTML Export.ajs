@@ -114,6 +114,9 @@ var relationships = '';
 var relationshipsCollection;
 var GLOBAL_ELEMENT_SELECTOR_NAME = 'selected-element-global';
 var GLOBAL_ELEMENT_NONE_SELECTOR_ID = 'selected-element-none-global';
+var GLOBAL_PANEL_TAB_NAME = 'selected-element-panel-tab';
+var GLOBAL_PANEL_TAB_DOC_ID = 'selected-element-panel-tab-doc';
+var GLOBAL_PANEL_TAB_PROPS_ID = 'selected-element-panel-tab-props';
 var domIdMap = {};
 var domIdCounter = 0;
 
@@ -413,13 +416,17 @@ function buildGlobalElementPanelSelector(allElements) {
   var panels = '';
   if(allElements) {
     _.chain(allElements).sortBy(function(e) { return e.name; }).each(function(e) {
+      var selectorId = getElementSelectorDomId(e.id);
       panels += tplViewElementPanel({
-        selectorId: getElementSelectorDomId(e.id),
+        selectorId: selectorId,
         selectorName: GLOBAL_ELEMENT_SELECTOR_NAME,
         noneSelectorId: GLOBAL_ELEMENT_NONE_SELECTOR_ID,
         elementName: _.escape(e.name || '(Unnamed)'),
         elementType: properCase(String(e.type || '')),
-        elementDocumentationContent: renderDocumentationContent(e.documentation || '')
+        elementDocumentationContent: renderElementDocumentationContent(e.documentation || ''),
+        elementPropertiesContent: renderElementPropertiesContent(e),
+        panelTabDocId: GLOBAL_PANEL_TAB_DOC_ID,
+        panelTabPropsId: GLOBAL_PANEL_TAB_PROPS_ID
       });
     });
   }
@@ -427,7 +434,8 @@ function buildGlobalElementPanelSelector(allElements) {
   return (
     '<div class="view-element-selector">' +
       '<input id="' + GLOBAL_ELEMENT_NONE_SELECTOR_ID + '" class="hidden" type="radio" name="' + GLOBAL_ELEMENT_SELECTOR_NAME + '" checked>' +
-      '<div class="view-element-panel"><h4>Element details</h4><p>Select an element in the diagram.</p></div>' +
+      '<input id="' + GLOBAL_PANEL_TAB_DOC_ID + '" class="hidden" type="radio" name="' + GLOBAL_PANEL_TAB_NAME + '" checked>' +
+      '<input id="' + GLOBAL_PANEL_TAB_PROPS_ID + '" class="hidden" type="radio" name="' + GLOBAL_PANEL_TAB_NAME + '">' +
       panels +
     '</div>'
   );
@@ -438,6 +446,96 @@ function buildBodyClassAttr(debugHotspots) {
   if(debugHotspots) classes.push('debug-hotspots');
   if(!classes.length) return '';
   return ' class="' + classes.join(' ') + '"';
+}
+
+function renderElementDocumentationContent(rawDocumentation) {
+  var content = renderDocumentationContent(rawDocumentation || '');
+  return content;
+}
+
+function renderElementPropertiesContent(concept) {
+  var properties = listConceptProperties(concept);
+  if(!properties.length) {
+    return '<p class="view-element-empty">No properties.</p>';
+  }
+  var rows = '';
+  _.each(properties, function(p) {
+    rows += '<tr><td>' + _.escape(p.key) + '</td><td>' + _.escape(p.value).replace(/\n/g, '<br>') + '</td></tr>';
+  });
+  return '<table class="view-properties-table"><thead><tr><th>Key</th><th>Value</th></tr></thead><tbody>' + rows + '</tbody></table>';
+}
+
+function listConceptProperties(concept) {
+  var out = [];
+  if(!concept || typeof concept.prop !== 'function') return out;
+
+  function pushProperty(key, value) {
+    var k = String(key || '').trim();
+    if(!k) return;
+    out.push({
+      key: k,
+      value: value === null || value === undefined ? '' : String(value)
+    });
+  }
+
+  var props = null;
+  try {
+    props = concept.prop();
+  } catch(err) {
+    return out;
+  }
+  if(!props) return out;
+
+  try {
+    if(Array.isArray(props)) {
+      _.each(props, function(key) {
+        if(key === null || key === undefined) return;
+        var value = '';
+        try { value = concept.prop(String(key)); } catch(err) {}
+        pushProperty(key, value);
+      });
+    } else if(typeof props.each === 'function') {
+      // Map-like shape: each(value, key)
+      props.each(function(value, key) {
+        if(key === undefined || key === null) {
+          pushProperty(value, concept.prop(String(value)));
+        } else {
+          pushProperty(key, value);
+        }
+      });
+    } else if(typeof props.entrySet === 'function') {
+      var it = props.entrySet().iterator();
+      while(it && it.hasNext()) {
+        var entry = it.next();
+        pushProperty(entry.getKey(), entry.getValue());
+      }
+    } else if(typeof props.iterator === 'function') {
+      // Collection of property keys
+      var keyIt = props.iterator();
+      while(keyIt && keyIt.hasNext()) {
+        var key = keyIt.next();
+        var val = '';
+        try { val = concept.prop(String(key)); } catch(err) {}
+        pushProperty(key, val);
+      }
+    } else if(typeof props === 'object') {
+      for(var key in props) {
+        if(Object.prototype.hasOwnProperty.call(props, key)) {
+          pushProperty(key, props[key]);
+        }
+      }
+    }
+  } catch(err) {}
+
+  var uniq = {};
+  var deduped = [];
+  _.each(out, function(p) {
+    var id = p.key + '::' + p.value;
+    if(uniq[id]) return;
+    uniq[id] = true;
+    deduped.push(p);
+  });
+  return _.sortBy(deduped, function(p) { return p.key.toLowerCase(); });
 }
 
 function minifyGeneratedHtml(html) {

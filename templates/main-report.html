@@ -337,22 +337,105 @@ Copyright (c) 2020 Phillip Beauvoir & Jean-Baptiste Sarrodie - MIT License
           z-index: 1000;
         }
         .view-element-selector {
-          margin-top: {{mainMargin}};
+          position: fixed;
+          top: {{headerHeight}};
+          right: 0;
+          width: min(420px, 38vw);
+          height: calc(100% - {{headerHeight}});
+          z-index: 45;
+          pointer-events: none;
         }
         .view-element-selector > input {
           display: none;
         }
         .view-element-selector > .view-element-panel {
           display: none;
-          padding: 12px;
-          border: 1px solid #dddddd;
+          position: absolute;
+          inset: 0;
+          padding: 14px 16px 16px 16px;
+          border-left: 1px solid #d5d5d5;
           background: #ffffff;
+          overflow: auto;
+          pointer-events: auto;
+          box-shadow: -8px 0 16px rgba(0, 0, 0, 0.12);
         }
         .view-element-selector > input:checked + .view-element-panel {
           display: block;
         }
         .view-element-panel h4 {
-          margin: 0 0 8px 0;
+          margin: 0 28px 8px 0;
+        }
+        .view-element-tabs {
+          margin-top: 10px;
+          text-align: center;
+        }
+        .view-element-tabs > label {
+          width: 50%;
+          padding: 0 25px 18px 25px;
+          text-transform: uppercase;
+          color: #aaaaaa;
+        }
+        .view-element-selector > #selected-element-panel-tab-doc:checked ~ .view-element-panel .view-element-tabs > label[for="selected-element-panel-tab-doc"],
+        .view-element-selector > #selected-element-panel-tab-props:checked ~ .view-element-panel .view-element-tabs > label[for="selected-element-panel-tab-props"] {
+          color: #666666;
+          border-bottom: 2px solid #0074D9;
+        }
+        .view-element-tabs > .row {
+          width: 200%;
+          left: -100%;
+          text-align: left;
+          margin-top: 18px;
+          padding-top: 25px;
+          border-top: 1px solid #e0e0e0;
+          transition: none;
+        }
+        .view-element-selector > #selected-element-panel-tab-doc:checked ~ .view-element-panel .view-element-tabs > .row {
+          margin-left: 100%;
+        }
+        .view-element-selector > #selected-element-panel-tab-props:checked ~ .view-element-panel .view-element-tabs > .row {
+          margin-left: 0%;
+        }
+        .view-properties-table {
+          width: 100%;
+          border-collapse: collapse;
+          table-layout: fixed;
+        }
+        .view-properties-table th,
+        .view-properties-table td {
+          border: 1px solid #e0e0e0;
+          padding: 6px 8px;
+          vertical-align: top;
+          word-break: break-word;
+        }
+        .view-properties-table th {
+          background: #fafafa;
+          text-align: left;
+          font-weight: 600;
+        }
+        .view-properties-table tbody tr:nth-child(odd) {
+          background: #fcfcfc;
+        }
+        .view-properties-table tbody tr:nth-child(even) {
+          background: #f5f8fb;
+        }
+        .view-element-empty {
+          color: #607d8b;
+          font-style: italic;
+          margin: 4px 0 0 0;
+        }
+        .view-element-panel-close {
+          position: absolute;
+          top: 8px;
+          right: 8px;
+          width: 24px;
+          height: 24px;
+          text-align: center;
+          color: #546e7a;
+          cursor: pointer;
+          line-height: 24px;
+        }
+        .view-element-panel-close:hover {
+          color: #263238;
         }
         .view-component {
           margin-top: {{mainMargin}};
