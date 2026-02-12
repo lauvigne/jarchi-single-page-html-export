@@ -298,6 +298,31 @@ Copyright (c) 2020 Phillip Beauvoir & Jean-Baptiste Sarrodie - MIT License
           pointer-events: none;
           z-index: 2;
         }
+        .view-image-script-bounds {
+          display: none;
+          position: absolute;
+          top: 0;
+          left: 0;
+          border: 2px dashed #00c853;
+          box-sizing: border-box;
+          pointer-events: none;
+          z-index: 1;
+        }
+        .view-image-script-bounds-label {
+          position: absolute;
+          top: -18px;
+          left: 0;
+          background: rgba(0, 200, 83, 0.85);
+          color: #fff;
+          font-size: 10px;
+          line-height: 1;
+          padding: 3px 5px;
+          border-radius: 3px;
+          white-space: nowrap;
+        }
+        .debug-hotspots .view-image-script-bounds {
+          display: block;
+        }
         .view-hotspot {
           position: absolute;
           display: block;

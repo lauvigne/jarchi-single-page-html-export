@@ -4,6 +4,9 @@
   <div class="view-diagram-block">
     <div class="view-diagram-container">
       <img class="diagram-image" src="{{viewImagePath}}" loading="lazy" decoding="async" fetchpriority="low">
+      <div class="view-image-script-bounds" style="width:{{viewImageWidth}}px;height:{{viewImageHeight}}px;">
+        <span class="view-image-script-bounds-label">script: {{viewImageWidth}}x{{viewImageHeight}}</span>
+      </div>
       <div class="view-diagram-overlay">
         {{viewHotspots}}
       </div>

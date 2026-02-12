@@ -286,6 +286,8 @@ function renderViewComponent(viewModel) {
       viewId: viewModel.viewId,
       viewName: viewModel.viewName,
       viewImagePath: viewModel.viewImagePath,
+      viewImageWidth: viewModel.viewImageSize && viewModel.viewImageSize.width ? String(viewModel.viewImageSize.width) : '',
+      viewImageHeight: viewModel.viewImageSize && viewModel.viewImageSize.height ? String(viewModel.viewImageSize.height) : '',
       viewHotspots: viewInteraction.hotspots,
       documentationContent: viewModel.documentationContent
     })
