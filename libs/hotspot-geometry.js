@@ -1,6 +1,72 @@
 // Hotspot geometry/rendering helpers
 // This module turns view diagram elements into positioned hotspots and element panels.
 
+var hotspotGeometryContext = {
+  _: null,
+  debugHotspots: null,
+  tplViewHotspotDebug: null,
+  tplViewHotspotCompact: null,
+  getViewDomId: null,
+  getElementSelectorDomId: null,
+  getDiagramNodeHotspotTarget: null,
+  isViewReferenceDiagramType: null
+};
+
+function initHotspotGeometry(context) {
+  hotspotGeometryContext = context || {};
+}
+
+function getHotspotGeometryUnderscore() {
+  return hotspotGeometryContext._ || _;
+}
+
+function isHotspotDebugEnabled() {
+  if(typeof hotspotGeometryContext.debugHotspots === 'function') {
+    return hotspotGeometryContext.debugHotspots() === true;
+  }
+  if(typeof hotspotGeometryContext.debugHotspots === 'boolean') {
+    return hotspotGeometryContext.debugHotspots === true;
+  }
+  return typeof debugHotspots !== 'undefined' && debugHotspots === true;
+}
+
+function getHotspotTemplate() {
+  var debugTemplate = hotspotGeometryContext.tplViewHotspotDebug;
+  var compactTemplate = hotspotGeometryContext.tplViewHotspotCompact;
+  if(typeof debugTemplate === 'function') debugTemplate = debugTemplate();
+  if(typeof compactTemplate === 'function') compactTemplate = compactTemplate();
+  if(isHotspotDebugEnabled()) return debugTemplate || tplViewHotspotDebug;
+  return compactTemplate || tplViewHotspotCompact;
+}
+
+function getHotspotViewDomId(rawViewId) {
+  if(typeof hotspotGeometryContext.getViewDomId === 'function') {
+    return hotspotGeometryContext.getViewDomId(rawViewId);
+  }
+  return getViewDomId(rawViewId);
+}
+
+function getHotspotElementSelectorDomId(rawConceptId) {
+  if(typeof hotspotGeometryContext.getElementSelectorDomId === 'function') {
+    return hotspotGeometryContext.getElementSelectorDomId(rawConceptId);
+  }
+  return getElementSelectorDomId(rawConceptId);
+}
+
+function resolveDiagramNodeHotspotTarget(diagramElement, currentViewId) {
+  if(typeof hotspotGeometryContext.getDiagramNodeHotspotTarget === 'function') {
+    return hotspotGeometryContext.getDiagramNodeHotspotTarget(diagramElement, currentViewId);
+  }
+  return getDiagramNodeHotspotTarget(diagramElement, currentViewId);
+}
+
+function isViewReferenceType(type) {
+  if(typeof hotspotGeometryContext.isViewReferenceDiagramType === 'function') {
+    return hotspotGeometryContext.isViewReferenceDiagramType(type);
+  }
+  return isViewReferenceDiagramType(type);
+}
+
 function buildViewInteraction(view, viewImageSize, hotspotZoomFactor) {
   var orderedEntries = collectOrderedViewEntries(view, hotspotZoomFactor);
   if(!orderedEntries.length) return emptyViewInteraction();
@@ -47,7 +113,7 @@ function normalizeEntriesForRenderedImage(orderedEntries, viewImageSize) {
 
   var rootOffsets = computeRootOffsets(diagramBounds, viewImageSize);
   var normalizedEntries = [];
-  _.each(orderedEntries, function(entry) {
+  getHotspotGeometryUnderscore().each(orderedEntries, function(entry) {
     var normalized = toNormalizedEntry(entry, rootOffsets.rootOffsetX, rootOffsets.rootOffsetY);
     if(normalized) normalizedEntries.push(normalized);
   });
@@ -114,7 +180,7 @@ function resolveHotspotExtents(normalizedEntries, viewImageSize) {
 function buildHotspotsAndPanels(normalizedEntries, extents, viewId) {
   var hotspotEntries = [];
 
-  _.each(normalizedEntries, function(entry) {
+  getHotspotGeometryUnderscore().each(normalizedEntries, function(entry) {
     var hotspotEntry = buildHotspotEntry(entry, extents, viewId);
     if(!hotspotEntry) return;
     hotspotEntries.push(hotspotEntry);
@@ -133,12 +199,12 @@ function buildHotspotEntry(entry, extents, viewId) {
 
   var isViewRef = entry.concept && entry.concept.isViewRef === true && entry.concept.targetViewId;
   var selectorId = isViewRef
-    ? getViewDomId(String(entry.concept.targetViewId))
-    : getElementSelectorDomId(String(entry.concept.id));
+    ? getHotspotViewDomId(String(entry.concept.targetViewId))
+    : getHotspotElementSelectorDomId(String(entry.concept.id));
 
   return {
     selectorId: selectorId,
-    elementName: _.escape(entry.concept.name || ''),
+    elementName: getHotspotGeometryUnderscore().escape(entry.concept.name || ''),
     left: percent.left,
     top: percent.top,
     width: percent.width,
@@ -150,10 +216,10 @@ function buildHotspotEntry(entry, extents, viewId) {
 }
 
 function orderHotspotsForRendering(hotspotEntries) {
-  var byAreaDesc = _.sortBy(hotspotEntries, function(h) { return -h.area; });
+  var byAreaDesc = getHotspotGeometryUnderscore().sortBy(hotspotEntries, function(h) { return -h.area; });
   var standardHotspots = [];
   var viewRefHotspots = [];
-  _.each(byAreaDesc, function(h) {
+  getHotspotGeometryUnderscore().each(byAreaDesc, function(h) {
     if(h.isViewRef) viewRefHotspots.push(h);
     else standardHotspots.push(h);
   });
@@ -161,10 +227,10 @@ function orderHotspotsForRendering(hotspotEntries) {
 }
 
 function renderHotspots(hotspotEntries) {
-  var hotspots = '';
-  var hotspotTemplate = debugHotspots ? tplViewHotspotDebug : tplViewHotspotCompact;
-  _.each(hotspotEntries, function(h, index) {
-    hotspots += hotspotTemplate({
+  var hotspotTemplate = getHotspotTemplate();
+  var parts = [];
+  getHotspotGeometryUnderscore().each(hotspotEntries, function(h, index) {
+    parts.push(hotspotTemplate({
       selectorId: h.selectorId,
       elementName: h.elementName,
       left: h.left,
@@ -173,9 +239,9 @@ function renderHotspots(hotspotEntries) {
       height: h.height,
       zIndex: 10 + index,
       debugText: h.debugText
-    });
+    }));
   });
-  return hotspots;
+  return parts.join('');
 }
 
 function collectEntriesRecursive(diagramElement, offsetX, offsetY, zoom, entries, currentViewId) {
@@ -211,7 +277,7 @@ function collectEntriesRecursive(diagramElement, offsetX, offsetY, zoom, entries
   }
 
   entries.push({
-    concept: getDiagramNodeHotspotTarget(diagramElement, currentViewId),
+    concept: resolveDiagramNodeHotspotTarget(diagramElement, currentViewId),
     x1: x,
     y1: y,
     x2: x + w,
@@ -221,7 +287,7 @@ function collectEntriesRecursive(diagramElement, offsetX, offsetY, zoom, entries
 
 function isDiagramNodeHotspotCandidate(diagramElement) {
   if(!diagramElement || !diagramElement.type) return false;
-  if(isViewReferenceDiagramType(diagramElement.type)) return true;
+  if(isViewReferenceType(diagramElement.type)) return true;
   return !isRelationshipDiagramType(diagramElement.type);
 }
 
@@ -248,7 +314,7 @@ function isChildBoundsRelativeToParent(childElement, parentWidth, parentHeight) 
 function calculateIntBounds(entries) {
   if(!entries || !entries.length) return null;
   var minX = null, minY = null, maxX = null, maxY = null;
-  _.each(entries, function(e) {
+  getHotspotGeometryUnderscore().each(entries, function(e) {
     if(minX === null || e.x1 < minX) minX = e.x1;
     if(minY === null || e.y1 < minY) minY = e.y1;
     if(maxX === null || e.x2 > maxX) maxX = e.x2;
@@ -266,7 +332,7 @@ function calculateIntBounds(entries) {
 function calculateExtents(entries) {
   if(!entries || !entries.length) return null;
   var minX = null, minY = null, maxX = null, maxY = null;
-  _.each(entries, function(entry) {
+  getHotspotGeometryUnderscore().each(entries, function(entry) {
     if(minX === null || entry.x < minX) minX = entry.x;
     if(minY === null || entry.y < minY) minY = entry.y;
     if(maxX === null || (entry.x + entry.width) > maxX) maxX = entry.x + entry.width;

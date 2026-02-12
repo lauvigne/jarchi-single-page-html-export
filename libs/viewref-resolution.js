@@ -1,6 +1,24 @@
 // ViewRef target resolution helpers
 // This module resolves archimate-diagram-model nodes to target view IDs.
 
+var viewRefResolutionContext = {
+  model: null,
+  _: null,
+  console: null
+};
+
+function initViewRefResolution(context) {
+  viewRefResolutionContext = context || {};
+}
+
+function getViewRefModel() {
+  return viewRefResolutionContext.model || model;
+}
+
+function getViewRefUnderscore() {
+  return viewRefResolutionContext._ || _;
+}
+
 function isViewReferenceDiagramType(type) {
   if(!type) return false;
   return String(type).toLowerCase() === 'archimate-diagram-model';
@@ -35,7 +53,7 @@ var viewNameById = null;
 function ensureViewNameByIdLoaded() {
   if(viewNameById) return;
   viewNameById = {};
-  $(model).find('view').each(function(v) {
+  $(getViewRefModel()).find('view').each(function(v) {
     if(v && v.id) viewNameById[String(v.id)] = v.name || '';
   });
 }
@@ -106,7 +124,7 @@ function resolveViewIdFromDirectCandidates(candidates, currentViewId) {
 
 function resolveViewIdFromNameCandidates(candidates, diagramElement, currentViewId) {
   var nameCandidates = [];
-  _.each(candidates, function(candidate) {
+  getViewRefUnderscore().each(candidates, function(candidate) {
     nameCandidates.push(extractPotentialViewName(candidate));
   });
   nameCandidates.push(extractPotentialViewName(diagramElement));
@@ -144,7 +162,7 @@ var viewIdByName = null;
 function ensureViewIdByNameLoaded() {
   if(viewIdByName) return;
   viewIdByName = {};
-  $(model).find('view').each(function(v) {
+  $(getViewRefModel()).find('view').each(function(v) {
     if(!v || !v.id || !v.name) return;
     var key = String(v.name);
     if(!viewIdByName[key]) viewIdByName[key] = [];

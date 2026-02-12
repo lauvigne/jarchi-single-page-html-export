@@ -66,6 +66,7 @@ var mdOptions = {
 
 load(__DIR__ + 'libs/viewref-resolution.js');
 load(__DIR__ + 'libs/hotspot-geometry.js');
+load(__DIR__ + 'libs/concept-properties.js');
 load(__DIR__ + 'libs/export-preferences.js');
 // Note: helpers are loaded before runtime state is initialized.
 // They rely on variables defined later (templates/options) at call time.
@@ -98,10 +99,10 @@ var ImageIO = Java.type('javax.imageio.ImageIO');
 var ArchiPlugin = Java.type("com.archimatetool.editor.ArchiPlugin");
 var IPreferenceConstants = Java.type("com.archimatetool.editor.preferences.IPreferenceConstants");
 
-var visibilityRulesBold = '';
-var visibilityRulesReveal = '';
-var visibilityRulesRevealBlock = '';
-var inputCheckbox = '';
+var visibilityRulesBoldParts = [];
+var visibilityRulesRevealParts = [];
+var visibilityRulesRevealBlockParts = [];
+var inputCheckboxParts = [];
 var treeFolder = '';
 var treeContent = '';
 var viewComponents = [];
@@ -120,6 +121,12 @@ var GLOBAL_PANEL_TAB_PROPS_ID = 'selected-element-panel-tab-props';
 var elementPanelSelectorByConceptId = {};
 var domIdMap = {};
 var domIdCounter = 0;
+
+initViewRefResolution({
+  model: model,
+  _: _,
+  console: console
+});
 
 var allFolders = $('folder');
 var viewsFolder = $(model).children().filter('folder.Views');
@@ -147,6 +154,16 @@ var markdownEnabled = activeProfile.markdownEnabled !== false;
 var minifyHtmlOutputEnabled = activeProfile.minifyHtmlOutput !== false;
 var exportStatsEnabled = activeProfile.exportStats === true;
 var hotspotZoomFactor = getHotspotZoomFactorFromArchiPreference();
+initHotspotGeometry({
+  _: _,
+  debugHotspots: function() { return debugHotspots; },
+  tplViewHotspotDebug: function() { return tplViewHotspotDebug; },
+  tplViewHotspotCompact: function() { return tplViewHotspotCompact; },
+  getViewDomId: getViewDomId,
+  getElementSelectorDomId: getElementSelectorDomId,
+  getDiagramNodeHotspotTarget: getDiagramNodeHotspotTarget,
+  isViewReferenceDiagramType: isViewReferenceDiagramType
+});
 var exportConfig = promptExportConfigurationDialog(model.name, profileStore);
 if(!exportConfig) {
   console.log('User cancelled.');
@@ -274,34 +291,40 @@ function renderViewComponent(viewModel) {
 }
 
 function aggregateRenderedViewComponents(components) {
+  var viewComponentParts = [];
   _.each(components, function(component) {
-    visibilityRulesBold += component.visibilityBoldRule;
-    visibilityRulesReveal += component.visibilityRevealRule;
-    visibilityRulesRevealBlock += component.visibilityRevealBlockRule;
-    inputCheckbox += component.inputCheckbox;
-    viewComponentsHtml += component.viewComponent;
+    visibilityRulesBoldParts.push(component.visibilityBoldRule);
+    visibilityRulesRevealParts.push(component.visibilityRevealRule);
+    visibilityRulesRevealBlockParts.push(component.visibilityRevealBlockRule);
+    inputCheckboxParts.push(component.inputCheckbox);
+    viewComponentParts.push(component.viewComponent);
   });
+  viewComponentsHtml = viewComponentParts.join('');
 }
 
 globalElementPanelSelector = buildGlobalElementPanelSelector(elementsCollection);
 
+var elementParts = [];
 _.chain(elementsCollection).sortBy(function(e) { return e.name; }).each(function(e) {
-    elements += tplElement({
+  elementParts.push(tplElement({
     viewsIds: getViewClassesForConcept(e.id),
     elementName: renderConceptLink(e, _.escape(e.name)),
     elementType: properCase(e.type)
-    });
+  }));
 });
+elements = elementParts.join('');
 
+var relationshipParts = [];
 _.chain(relationshipsCollection).sortBy(function(r) { return r.name; }).each(function(r) {
-    relationships += tplRelationship({
+  relationshipParts.push(tplRelationship({
     viewsIds: getViewClassesForConcept(r.id),
     relationshipName: _.escape(r.name),
     relationshipType: properCase(r.type),
     relationshipSource: renderConceptLink(r.source, _.escape(r.source.name)),
     relationshipTarget: renderConceptLink(r.target, _.escape(r.target.name))
-    });
+  }));
 });
+relationships = relationshipParts.join('');
 
 var mainReport = tplMainReport({
   roboto: minifyHtmlOutputEnabled ? minifyCssText(roboto) : roboto,
@@ -310,10 +333,10 @@ var mainReport = tplMainReport({
   baseHref: _.escape(baseHref),
   bodyClassAttr: buildBodyClassAttr(debugHotspots),
   modelTitle: _.escape(model.name),
-  visibilityRulesBold: visibilityRulesBold,
-  visibilityRulesReveal: visibilityRulesReveal,
-  visibilityRulesRevealBlock: visibilityRulesRevealBlock,
-  inputCheckbox: inputCheckbox,
+  visibilityRulesBold: visibilityRulesBoldParts.join(''),
+  visibilityRulesReveal: visibilityRulesRevealParts.join(''),
+  visibilityRulesRevealBlock: visibilityRulesRevealBlockParts.join(''),
+  inputCheckbox: inputCheckboxParts.join(''),
   treeContent: treeContent,
   viewComponents: viewComponentsHtml,
   globalElementPanelSelector: globalElementPanelSelector,
@@ -451,88 +474,15 @@ function renderConceptLink(concept, fallbackText) {
 }
 
 function renderElementPropertiesContent(concept) {
-  var properties = listConceptProperties(concept);
+  var properties = getConceptProperties(concept, _);
   if(!properties.length) {
     return '<p class="view-element-empty">No properties.</p>';
   }
-  var rows = '';
+  var rows = [];
   _.each(properties, function(p) {
-    rows += '<tr><td>' + _.escape(p.key) + '</td><td>' + _.escape(p.value).replace(/\n/g, '<br>') + '</td></tr>';
+    rows.push('<tr><td>' + _.escape(p.key) + '</td><td>' + _.escape(p.value).replace(/\n/g, '<br>') + '</td></tr>');
   });
-  return '<table class="view-properties-table"><thead><tr><th>Key</th><th>Value</th></tr></thead><tbody>' + rows + '</tbody></table>';
-}
-
-function listConceptProperties(concept) {
-  var out = [];
-  if(!concept || typeof concept.prop !== 'function') return out;
-
-  function pushProperty(key, value) {
-    var k = String(key || '').trim();
-    if(!k) return;
-    out.push({
-      key: k,
-      value: value === null || value === undefined ? '' : String(value)
-    });
-  }
-
-  var props = null;
-  try {
-    props = concept.prop();
-  } catch(err) {
-    return out;
-  }
-  if(!props) return out;
-
-  try {
-    if(Array.isArray(props)) {
-      _.each(props, function(key) {
-        if(key === null || key === undefined) return;
-        var value = '';
-        try { value = concept.prop(String(key)); } catch(err) {}
-        pushProperty(key, value);
-      });
-    } else if(typeof props.each === 'function') {
-      // Map-like shape: each(value, key)
-      props.each(function(value, key) {
-        if(key === undefined || key === null) {
-          pushProperty(value, concept.prop(String(value)));
-        } else {
-          pushProperty(key, value);
-        }
-      });
-    } else if(typeof props.entrySet === 'function') {
-      var it = props.entrySet().iterator();
-      while(it && it.hasNext()) {
-        var entry = it.next();
-        pushProperty(entry.getKey(), entry.getValue());
-      }
-    } else if(typeof props.iterator === 'function') {
-      // Collection of property keys
-      var keyIt = props.iterator();
-      while(keyIt && keyIt.hasNext()) {
-        var key = keyIt.next();
-        var val = '';
-        try { val = concept.prop(String(key)); } catch(err) {}
-        pushProperty(key, val);
-      }
-    } else if(typeof props === 'object') {
-      for(var key in props) {
-        if(Object.prototype.hasOwnProperty.call(props, key)) {
-          pushProperty(key, props[key]);
-        }
-      }
-    }
-  } catch(err) {}
-
-  var uniq = {};
-  var deduped = [];
-  _.each(out, function(p) {
-    var id = p.key + '::' + p.value;
-    if(uniq[id]) return;
-    uniq[id] = true;
-    deduped.push(p);
-  });
-  return _.sortBy(deduped, function(p) { return p.key.toLowerCase(); });
+  return '<table class="view-properties-table"><thead><tr><th>Key</th><th>Value</th></tr></thead><tbody>' + rows.join('') + '</tbody></table>';
 }
 
 function minifyGeneratedHtml(html) {
