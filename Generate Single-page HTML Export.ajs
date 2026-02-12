@@ -122,6 +122,8 @@ var domIdCounter = 0;
 
 var allFolders = $('folder');
 var viewsFolder = $(model).children().filter('folder.Views');
+var viewsRootFolder = viewsFolder && viewsFolder.first ? viewsFolder.first() : null;
+var viewsRootFolderId = viewsRootFolder ? String(viewsRootFolder.id) : null;
 var viewFolders = viewsFolder.find('folder');
 var nonViewFolders = allFolders.not(viewsFolder).not(viewFolders);
 
@@ -184,6 +186,7 @@ aggregateRenderedViewComponents(viewComponents);
 function exportViews(folder) {
   console.log('Exporting "', folder.name, '"...');
   var previousContent = treeContent;
+  var isViewsRootFolder = viewsRootFolderId && String(folder.id) === viewsRootFolderId;
   treeContent = '';
   _.chain($(folder).children('folder')).sortBy(function(f) { return f.name; }).each(function(f) {
     exportViews(f)
@@ -214,8 +217,13 @@ function exportViews(folder) {
       addViewClassTokenForConcept(r.concept && r.concept.id, v.id);
     });
   });
-  treeContent = tplTreeFolder({folderId: getFolderDomId(folder.id), folderName: _.escape(folder.name), folderContent: treeContent});
-  treeContent = previousContent + treeContent;
+  if(isViewsRootFolder) {
+    treeContent = previousContent + treeContent;
+  }
+  else {
+    treeContent = tplTreeFolder({folderId: getFolderDomId(folder.id), folderName: _.escape(folder.name), folderContent: treeContent});
+    treeContent = previousContent + treeContent;
+  }
 }
 
 function buildViewModel(view) {
