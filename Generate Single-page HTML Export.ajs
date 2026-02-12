@@ -251,19 +251,31 @@ function buildViewModel(view) {
   var viewImagePath = 'images/' + view.id + '.png';
   var viewImageFile = new File(imagesDirectory, view.id + '.png');
   $.model.renderViewToFile(view, viewImageFile.getPath(), "PNG");
+  var imageSize = readImageSize(viewImageFile);
+  if(debugHotspots) {
+    console.log(
+      '[hotspot debug] render view=' + String(view.id) +
+      ' name="' + String(view.name || '') + '"' +
+      ' file=' + viewImageFile.getPath() +
+      ' size=' + String(imageSize && imageSize.width || '-') + 'x' + String(imageSize && imageSize.height || '-')
+    );
+  }
 
   return {
     rawView: view,
     viewId: viewId,
     viewName: _.escape(view.name),
     viewImagePath: viewImagePath,
-    viewImageSize: readImageSize(viewImageFile),
+    viewImageSize: imageSize,
     documentationContent: renderDocumentationContent(view.documentation || '')
   };
 }
 
 function renderViewComponent(viewModel) {
   var viewInteraction = buildViewInteraction(viewModel.rawView, viewModel.viewImageSize, hotspotZoomFactor);
+  var debugBounds = getDebugScriptBoundsSize(viewModel.viewImageSize, hotspotZoomFactor);
+  var rawWidth = viewModel.viewImageSize && viewModel.viewImageSize.width ? String(viewModel.viewImageSize.width) : '';
+  var rawHeight = viewModel.viewImageSize && viewModel.viewImageSize.height ? String(viewModel.viewImageSize.height) : '';
 
   return {
     treeItem: tplTreeView({
@@ -286,11 +298,26 @@ function renderViewComponent(viewModel) {
       viewId: viewModel.viewId,
       viewName: viewModel.viewName,
       viewImagePath: viewModel.viewImagePath,
-      viewImageWidth: viewModel.viewImageSize && viewModel.viewImageSize.width ? String(viewModel.viewImageSize.width) : '',
-      viewImageHeight: viewModel.viewImageSize && viewModel.viewImageSize.height ? String(viewModel.viewImageSize.height) : '',
+      viewImageWidth: rawWidth,
+      viewImageHeight: rawHeight,
+      viewImageZoomedWidth: debugBounds.width,
+      viewImageZoomedHeight: debugBounds.height,
+      viewZoomFactor: String(hotspotZoomFactor || 1),
       viewHotspots: viewInteraction.hotspots,
       documentationContent: viewModel.documentationContent
     })
+  };
+}
+
+function getDebugScriptBoundsSize(imageSize, zoomFactor) {
+  if(!imageSize || !imageSize.width || !imageSize.height) {
+    return { width: '', height: '' };
+  }
+  var zoom = Number(zoomFactor);
+  if(!zoom || zoom <= 0) zoom = 1;
+  return {
+    width: String(toInt(Number(imageSize.width) / zoom)),
+    height: String(toInt(Number(imageSize.height) / zoom))
   };
 }
 

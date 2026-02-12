@@ -67,8 +67,22 @@ function isViewReferenceType(type) {
   return isViewReferenceDiagramType(type);
 }
 
+function logHotspotDebug(message) {
+  if(!isHotspotDebugEnabled()) return;
+  try {
+    console.log(message);
+  }
+  catch(err) {}
+}
+
 function buildViewInteraction(view, viewImageSize, hotspotZoomFactor) {
   var orderedEntries = collectOrderedViewEntries(view, hotspotZoomFactor);
+  logHotspotDebug(
+    '[hotspot debug] view=' + String(view && view.id || '-') +
+    ' orderedEntries=' + String(orderedEntries.length) +
+    ' zoom=' + String(hotspotZoomFactor) +
+    ' image=' + String(viewImageSize && viewImageSize.width || '-') + 'x' + String(viewImageSize && viewImageSize.height || '-')
+  );
   if(!orderedEntries.length) return emptyViewInteraction();
 
   var normalization = normalizeEntriesForRenderedImage(orderedEntries, viewImageSize);
@@ -121,6 +135,15 @@ function normalizeEntriesForRenderedImage(orderedEntries, viewImageSize) {
 
   var extents = resolveHotspotExtents(normalizedEntries, viewImageSize);
   if(!extents) return null;
+
+  logHotspotDebug(
+    '[hotspot debug] bounds=' +
+    ' min(' + String(diagramBounds.minX) + ',' + String(diagramBounds.minY) + ')' +
+    ' size(' + String(diagramBounds.width) + 'x' + String(diagramBounds.height) + ')' +
+    ' offsets(' + String(rootOffsets.rootOffsetX) + ',' + String(rootOffsets.rootOffsetY) + ')' +
+    ' extents=' + String(extents.width) + 'x' + String(extents.height) +
+    ' normalizedEntries=' + String(normalizedEntries.length)
+  );
 
   return {
     entries: normalizedEntries,
@@ -187,6 +210,19 @@ function buildHotspotsAndPanels(normalizedEntries, extents, viewId) {
   });
 
   var orderedHotspots = orderHotspotsForRendering(hotspotEntries);
+  if(orderedHotspots.length) {
+    var first = orderedHotspots[0];
+    logHotspotDebug(
+      '[hotspot debug] view=' + String(viewId) +
+      ' hotspots=' + String(orderedHotspots.length) +
+      ' first=' + String(first.elementName || '') +
+      ' left=' + String(first.left) + '% top=' + String(first.top) +
+      '% w=' + String(first.width) + '% h=' + String(first.height) + '%'
+    );
+  }
+  else {
+    logHotspotDebug('[hotspot debug] view=' + String(viewId) + ' hotspots=0');
+  }
   return {
     hotspots: renderHotspots(orderedHotspots),
     panels: ''
