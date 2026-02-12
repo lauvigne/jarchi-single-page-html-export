@@ -114,6 +114,8 @@ var relationships = '';
 var relationshipsCollection;
 var GLOBAL_ELEMENT_SELECTOR_NAME = 'selected-element-global';
 var GLOBAL_ELEMENT_NONE_SELECTOR_ID = 'selected-element-none-global';
+var domIdMap = {};
+var domIdCounter = 0;
 
 var allFolders = $('folder');
 var viewsFolder = $(model).children().filter('folder.Views');
@@ -226,12 +228,12 @@ function exportViews(folder) {
       addViewClassTokenForConcept(r.concept && r.concept.id, v.id);
     });
   });
-  treeContent = tplTreeFolder({folderId: 'id-'+folder.id, folderName: _.escape(folder.name), folderContent: treeContent});
+  treeContent = tplTreeFolder({folderId: getFolderDomId(folder.id), folderName: _.escape(folder.name), folderContent: treeContent});
   treeContent = previousContent + treeContent;
 }
 
 function buildViewModel(view) {
-  var viewId = 'id-' + view.id;
+  var viewId = getViewDomId(view.id);
   var viewImagePath = 'images/' + view.id + '.png';
   var viewImageFile = new File(imagesDirectory, view.id + '.png');
   $.model.renderViewToFile(view, viewImageFile.getPath(), "PNG");
@@ -309,9 +311,9 @@ _.chain(relationshipsCollection).sortBy(function(r) { return r.name; }).each(fun
 });
 
 var mainReport = tplMainReport({
-  roboto: roboto,
-  icon: icon,
-  picnic: picnic,
+  roboto: minifyHtmlOutputEnabled ? minifyCssText(roboto) : roboto,
+  icon: minifyHtmlOutputEnabled ? minifyCssText(icon) : icon,
+  picnic: minifyHtmlOutputEnabled ? minifyCssText(picnic) : picnic,
   baseHref: _.escape(baseHref),
   bodyClassAttr: buildBodyClassAttr(debugHotspots),
   modelTitle: _.escape(model.name),
@@ -343,6 +345,7 @@ var mainReport = tplMainReport({
 });
 
 if(minifyHtmlOutputEnabled) {
+  mainReport = minifyInlineCssBlocks(mainReport);
   mainReport = minifyGeneratedHtml(mainReport);
 }
 
@@ -373,7 +376,7 @@ function renderDocumentationContent(rawDocumentation) {
 function addViewClassTokenForConcept(conceptId, viewId) {
   if(!conceptId || !viewId) return;
   var key = String(conceptId);
-  var token = 'id-' + String(viewId);
+  var token = getViewDomId(viewId);
   var tokens = viewClassTokensByConceptId[key];
   if(!tokens) {
     tokens = [];
@@ -396,7 +399,7 @@ function buildGlobalElementPanelSelector(allElements) {
   if(allElements) {
     _.chain(allElements).sortBy(function(e) { return e.name; }).each(function(e) {
       panels += tplViewElementPanel({
-        selectorId: 'selected-element-' + String(e.id),
+        selectorId: getElementSelectorDomId(e.id),
         selectorName: GLOBAL_ELEMENT_SELECTOR_NAME,
         noneSelectorId: GLOBAL_ELEMENT_NONE_SELECTOR_ID,
         elementName: _.escape(e.name || '(Unnamed)'),
@@ -428,6 +431,46 @@ function minifyGeneratedHtml(html) {
     .replace(/[ \t]+\n/g, '\n')
     .replace(/\n{2,}/g, '\n')
     .trim();
+}
+
+function minifyInlineCssBlocks(html) {
+  return String(html || '').replace(/<style>([\s\S]*?)<\/style>/g, function(_match, css) {
+    return '<style>' + minifyCssText(css) + '</style>';
+  });
+}
+
+function minifyCssText(css) {
+  return String(css || '')
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .replace(/\s*([{}:;,>+~])\s*/g, '$1')
+    .replace(/;}/g, '}')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function getViewDomId(rawViewId) {
+  return getShortDomId('v', rawViewId);
+}
+
+function getFolderDomId(rawFolderId) {
+  return getShortDomId('f', rawFolderId);
+}
+
+function getElementSelectorDomId(rawConceptId) {
+  return 'se' + getShortDomId('e', rawConceptId);
+}
+
+function getShortDomId(kindPrefix, rawId) {
+  var key = String(kindPrefix) + ':' + String(rawId || '');
+  if(!domIdMap[key]) {
+    domIdCounter += 1;
+    domIdMap[key] = String(kindPrefix) + toBase36(domIdCounter);
+  }
+  return domIdMap[key];
+}
+
+function toBase36(n) {
+  return Number(n).toString(36);
 }
 
 function readImageSize(imageFile) {

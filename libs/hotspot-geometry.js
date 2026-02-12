@@ -2,36 +2,28 @@
 // This module turns view diagram elements into positioned hotspots and element panels.
 
 function buildViewInteraction(view, viewImageSize, hotspotZoomFactor) {
-  var selectorName = 'selected-element-' + view.id;
-  var noneSelectorId = 'selected-element-none-' + view.id;
   var orderedEntries = collectOrderedViewEntries(view, hotspotZoomFactor);
-  if(!orderedEntries.length) return emptyViewInteraction(selectorName, noneSelectorId);
+  if(!orderedEntries.length) return emptyViewInteraction();
 
   var normalization = normalizeEntriesForRenderedImage(orderedEntries, viewImageSize);
   if(!normalization || !normalization.entries.length || !normalization.extents) {
-    return emptyViewInteraction(selectorName, noneSelectorId);
+    return emptyViewInteraction();
   }
 
   var rendered = buildHotspotsAndPanels(
     normalization.entries,
     normalization.extents,
-    String(view.id),
-    selectorName,
-    noneSelectorId
+    String(view.id)
   );
 
   return {
-    selectorName: selectorName,
-    noneSelectorId: noneSelectorId,
     hotspots: rendered.hotspots,
     panels: rendered.panels
   };
 }
 
-function emptyViewInteraction(selectorName, noneSelectorId) {
+function emptyViewInteraction() {
   return {
-    selectorName: selectorName,
-    noneSelectorId: noneSelectorId,
     hotspots: '',
     panels: ''
   };
@@ -119,7 +111,7 @@ function resolveHotspotExtents(normalizedEntries, viewImageSize) {
   return calculateExtents(normalizedEntries);
 }
 
-function buildHotspotsAndPanels(normalizedEntries, extents, viewId, selectorName, noneSelectorId) {
+function buildHotspotsAndPanels(normalizedEntries, extents, viewId) {
   var hotspotEntries = [];
 
   _.each(normalizedEntries, function(entry) {
@@ -141,8 +133,8 @@ function buildHotspotEntry(entry, extents, viewId) {
 
   var isViewRef = entry.concept && entry.concept.isViewRef === true && entry.concept.targetViewId;
   var selectorId = isViewRef
-    ? 'id-' + String(entry.concept.targetViewId)
-    : 'selected-element-' + String(entry.concept.id);
+    ? getViewDomId(String(entry.concept.targetViewId))
+    : getElementSelectorDomId(String(entry.concept.id));
 
   return {
     selectorId: selectorId,
