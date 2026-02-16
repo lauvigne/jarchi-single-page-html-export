@@ -2,15 +2,27 @@
 // This module centralizes persistence and default export path resolution.
 
 function getHotspotZoomFactorFromArchiPreference() {
+  var prefKey = IPreferenceConstants.SCALE_IMAGE_EXPORT;
+
+  // Archi 5.4.x compatibility: static preferences accessor is available.
+  try {
+    if(ArchiPlugin && ArchiPlugin.PREFERENCES && typeof ArchiPlugin.PREFERENCES.getBoolean === 'function') {
+      var scaleFromStatic = ArchiPlugin.PREFERENCES.getBoolean(prefKey);
+      return scaleFromStatic ? 2 : 1;
+    }
+  }
+  catch(errStatic) {}
+
+  // Archi 5.7.x path (and some intermediate versions).
   try {
     var scaleImageExport = ArchiPlugin.getInstance()
       .getPreferenceStore()
-      .getBoolean(IPreferenceConstants.SCALE_IMAGE_EXPORT);
+      .getBoolean(prefKey);
     return scaleImageExport ? 2 : 1;
   }
-  catch(err) {
-    console.error('impossible to retrieve SCALE_IMAGE_EXPORT pref ! so use zoomFactor to 2');
-    return 2;
+  catch(errInstance) {
+    console.error('Unable to retrieve SCALE_IMAGE_EXPORT preference, fallback zoomFactor=1');
+    return 1;
   }
 }
 
