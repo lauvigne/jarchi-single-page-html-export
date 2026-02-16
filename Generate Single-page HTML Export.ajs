@@ -138,10 +138,11 @@ var viewFolders = viewsFolder.find('folder');
 var nonViewFolders = allFolders.not(viewsFolder).not(viewFolders);
 
 var folders = selection.filter("folder").not(nonViewFolders);
+folders = folders.filter(function(f) { return !isHiddenFromExport(f); });
 
 if(! folders.size()) {
-  folders = viewsFolder;
-  console.log("All views have been selected.");
+  folders = viewsFolder.filter(function(f) { return !isHiddenFromExport(f); });
+  console.log("All visible views have been selected.");
 }
 
 var preferencesFile = getExportPreferencesFile();
@@ -206,14 +207,18 @@ _.chain(folders).sortBy(function(f) { return f.name; }).each(function(f) {
 aggregateRenderedViewComponents(viewComponents);
 
 function exportViews(folder) {
+  if(isHiddenFromExport(folder)) {
+    console.log('Skipping hidden folder "', folder.name, '" (_hide_from_export_=true)');
+    return;
+  }
   console.log('Exporting "', folder.name, '"...');
   var previousContent = treeContent;
   var isViewsRootFolder = viewsRootFolderId && String(folder.id) === viewsRootFolderId;
   treeContent = '';
-  _.chain($(folder).children('folder')).sortBy(function(f) { return f.name; }).each(function(f) {
+  _.chain($(folder).children('folder').filter(function(f) { return !isHiddenFromExport(f); })).sortBy(function(f) { return f.name; }).each(function(f) {
     exportViews(f)
   });
-  _.chain($(folder).children('view')).sortBy(function(v) { return v.name; }).each(function(v) {
+  _.chain($(folder).children('view').filter(function(v) { return !isHiddenFromExport(v); })).sortBy(function(v) { return v.name; }).each(function(v) {
     // Build and render one autonomous component model per view, then aggregate.
     var viewModel = buildViewModel(v);
     var renderedComponent = renderViewComponent(viewModel);

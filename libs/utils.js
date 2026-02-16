@@ -62,3 +62,23 @@ function clampPercent(v) {
 function round2(v) {
   return Math.round(v * 100) / 100;
 }
+
+function isHiddenFromExport(obj) {
+  if(!obj || typeof obj.prop !== 'function') return false;
+  var raw = null;
+  try {
+    raw = obj.prop('_hide_from_export_');
+  }
+  catch(err) {
+    return false;
+  }
+  return parseExportFlag(raw) === true;
+}
+
+function parseExportFlag(value) {
+  if(value === true) return true;
+  if(value === false || value === null || value === undefined) return false;
+  if(typeof value === 'number') return value === 1;
+  var lowered = String(value).trim().toLowerCase();
+  return lowered === 'true' || lowered === '1' || lowered === 'yes';
+}
