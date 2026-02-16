@@ -530,14 +530,18 @@ function getFolderDomId(rawFolderId) {
 }
 
 function getElementSelectorDomId(rawConceptId) {
-  return 'se' + getShortDomId('e', rawConceptId);
+  return toBase36(getShortDomIdNumeric('e', rawConceptId));
 }
 
 function getShortDomId(kindPrefix, rawId) {
+  return String(kindPrefix) + toBase36(getShortDomIdNumeric(kindPrefix, rawId));
+}
+
+function getShortDomIdNumeric(kindPrefix, rawId) {
   var key = String(kindPrefix) + ':' + String(rawId || '');
   if(!domIdMap[key]) {
     domIdCounter += 1;
-    domIdMap[key] = String(kindPrefix) + toBase36(domIdCounter);
+    domIdMap[key] = domIdCounter;
   }
   return domIdMap[key];
 }
