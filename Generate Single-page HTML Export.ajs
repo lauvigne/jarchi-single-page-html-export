@@ -248,7 +248,7 @@ function exportViews(folder) {
 
 function buildViewModel(view) {
   var viewId = getViewDomId(view.id);
-  var viewImagePath = 'images/' + view.id + '.png';
+  var viewImagePath = normalizeBaseHref(baseHref) + 'images/' + view.id + '.png';
   var viewImageFile = new File(imagesDirectory, view.id + '.png');
   $.model.renderViewToFile(view, viewImageFile.getPath(), "PNG");
   var imageSize = readImageSize(viewImageFile);
