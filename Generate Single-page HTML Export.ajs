@@ -175,6 +175,7 @@ profileStore = exportConfig.profileStore;
 var selectedProfile = exportConfig.profile;
 var exportDirPath = selectedProfile.directory;
 var baseHref = selectedProfile.baseHref;
+var topBannerMessage = String(selectedProfile.bannerMessage || '');
 debugHotspots = selectedProfile.debugHotspots === true;
 markdownEnabled = selectedProfile.markdownEnabled !== false;
 minifyHtmlOutputEnabled = selectedProfile.minifyHtmlOutput !== false;
@@ -188,6 +189,7 @@ if(!exportDirectory.isDirectory()) {
 }
 profileStore.profiles[profileStore.activeProfile].directory = exportDirectory.getPath();
 profileStore.profiles[profileStore.activeProfile].baseHref = normalizeBaseHref(baseHref);
+profileStore.profiles[profileStore.activeProfile].bannerMessage = topBannerMessage;
 baseHref = profileStore.profiles[profileStore.activeProfile].baseHref;
 
 var indexFilePath = new File(exportDirectory, 'index.html').getPath();
@@ -363,6 +365,7 @@ var mainReport = tplMainReport({
   picnic: minifyHtmlOutputEnabled ? minifyCssText(picnic) : picnic,
   baseHref: _.escape(baseHref),
   bodyClassAttr: buildBodyClassAttr(debugHotspots),
+  topSnackbar: renderTopSnackbar(topBannerMessage, baseHref),
   modelTitle: _.escape(model.name),
   visibilityRulesBold: visibilityRulesBoldParts.join(''),
   visibilityRulesReveal: visibilityRulesRevealParts.join(''),
@@ -476,6 +479,20 @@ function buildBodyClassAttr(debugHotspots) {
   if(debugHotspots) classes.push('debug-hotspots');
   if(!classes.length) return '';
   return ' class="' + classes.join(' ') + '"';
+}
+
+function renderTopSnackbar(rawMessage, rawBaseHref) {
+  var message = String(rawMessage || '').trim();
+  if(!message) return '';
+  var href = String(rawBaseHref || '').trim();
+  var output = '<input id="top-snackbar-dismiss" class="hidden" type="checkbox">' +
+    '<div class="top-snackbar">' +
+    '<span class="top-snackbar-msg">' + _.escape(message) + '</span>';
+  if(href) {
+    output += '<a class="top-snackbar-url" href="' + _.escape(href) + '" target="_blank" rel="noopener noreferrer">' + _.escape(href) + '</a>';
+  }
+  output += '<label for="top-snackbar-dismiss" class="top-snackbar-close" title="Close">×</label></div>';
+  return output;
 }
 
 function renderElementDocumentationContent(rawDocumentation) {

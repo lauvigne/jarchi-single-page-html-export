@@ -121,6 +121,7 @@ function getDefaultExportProfile(defaultExportDirPath) {
   return {
     directory: String(defaultExportDirPath || ''),
     baseHref: './',
+    bannerMessage: '',
     debugHotspots: false,
     markdownEnabled: true,
     minifyHtmlOutput: true,
@@ -158,6 +159,7 @@ function normalizeProfile(profile, defaultProfile) {
   return {
     directory: String(source.directory || defaultProfile.directory || ''),
     baseHref: normalizeBaseHref(source.baseHref || defaultProfile.baseHref),
+    bannerMessage: String(source.bannerMessage || defaultProfile.bannerMessage || ''),
     debugHotspots: normalizeBoolean(source.debugHotspots, defaultProfile.debugHotspots),
     markdownEnabled: normalizeBoolean(source.markdownEnabled, defaultProfile.markdownEnabled),
     minifyHtmlOutput: normalizeBoolean(source.minifyHtmlOutput, defaultProfile.minifyHtmlOutput),
@@ -229,6 +231,7 @@ function promptExportConfigurationDialog(modelName, profileStore) {
 
     setText('directory', profile.directory);
     setText('baseHref', normalizeBaseHref(profile.baseHref));
+    setText('bannerMessage', profile.bannerMessage || '');
     setChecked('debugHotspots', profile.debugHotspots === true);
     setChecked('markdownEnabled', profile.markdownEnabled !== false);
     setChecked('minifyHtmlOutput', profile.minifyHtmlOutput !== false);
@@ -267,6 +270,12 @@ function promptExportConfigurationDialog(modelName, profileStore) {
           type: 'text',
           label: 'Base href',
           value: normalizeBaseHref(activeProfile.baseHref),
+          fill: true
+        },
+        bannerMessage: {
+          type: 'text',
+          label: 'Top banner',
+          value: String(activeProfile.bannerMessage || ''),
           fill: true
         },
         debugHotspots: {
