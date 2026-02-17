@@ -1,5 +1,19 @@
 // ViewRef target resolution helpers
-// This module resolves archimate-diagram-model nodes to target view IDs.
+//
+// Purpose:
+// Resolve "archimate-diagram-model" nodes (view references) to the target view ID
+// used by exported hotspots.
+//
+// Why this module exists:
+// Depending on Archi/jArchi/runtime proxy shape, direct fields can be incomplete
+// or can resolve to the current/source view. We therefore use a layered strategy:
+// 1) Resolve by displayed name (preferred, most stable in our models)
+// 2) Resolve from common direct candidate fields
+// 3) Resolve via deep object traversal with key-based scoring
+// 4) Last fallback by name candidates extracted from available fields
+//
+// Important behavior:
+// If resolution points only to current view, return null to avoid no-op hotspots.
 
 var viewRefResolutionContext = {
   model: null,
@@ -9,6 +23,10 @@ var viewRefResolutionContext = {
 
 function initViewRefResolution(context) {
   viewRefResolutionContext = context || {};
+  // Reset caches for each export run/context to avoid stale mappings
+  // when model content changes or when script is re-executed.
+  viewNameById = null;
+  viewIdByName = null;
 }
 
 function getViewRefModel() {
@@ -29,8 +47,8 @@ function getDiagramNodeHotspotTarget(diagramElement, currentViewId) {
   if(diagramElement.concept && diagramElement.concept.id) return diagramElement.concept;
   if(!isViewReferenceDiagramType(diagramElement.type)) return null;
 
-  // For view references, the displayed label usually matches the referenced view name.
-  // Prefer this mapping to avoid API fields that often resolve to the current/source view.
+  // For view references, displayed label usually matches target view name.
+  // Prefer this over proxy fields that may resolve to source/current view.
   var targetViewId = resolveViewIdByName(diagramElement.name, currentViewId);
   if(!targetViewId) {
     targetViewId = resolveReferencedViewId(diagramElement, currentViewId);
@@ -49,9 +67,13 @@ function getDiagramNodeHotspotTarget(diagramElement, currentViewId) {
   };
 }
 
+// Central cache: View ID -> View Name
+// This is used by multiple resolution paths and hotspot labeling.
+// It is lazily populated once per initViewRefResolution() context.
 var viewNameById = null;
 function ensureViewNameByIdLoaded() {
   if(viewNameById) return;
+  // Cache once: ID -> Name
   viewNameById = {};
   $(getViewRefModel()).find('view').each(function(v) {
     if(v && v.id) viewNameById[String(v.id)] = v.name || '';
@@ -76,7 +98,7 @@ function resolveReferencedViewId(diagramElement, currentViewId) {
   var directResolution = resolveViewIdFromDirectCandidates(candidates, currentViewId);
   if(directResolution.resolved) return directResolution.resolved;
 
-  // Generic fallback: inspect object graph to find any value matching a known view id.
+  // Generic fallback: inspect object graph to find values matching known view IDs.
   var deepId = resolveReferencedViewIdDeep(diagramElement, currentViewId);
   if(deepId) return deepId;
 
@@ -91,6 +113,7 @@ function resolveReferencedViewId(diagramElement, currentViewId) {
 }
 
 function getReferencedViewCandidates(diagramElement) {
+  // Common proxy fields observed across versions.
   return [
     diagramElement.referencedView,
     diagramElement.referencedModel,
@@ -161,6 +184,7 @@ function extractPotentialViewName(candidate) {
 var viewIdByName = null;
 function ensureViewIdByNameLoaded() {
   if(viewIdByName) return;
+  // Reverse index: Name -> [IDs] (name is not guaranteed unique).
   viewIdByName = {};
   $(getViewRefModel()).find('view').each(function(v) {
     if(!v || !v.id || !v.name) return;
@@ -176,6 +200,7 @@ function resolveViewIdByName(viewName, currentViewId) {
   var ids = viewIdByName[String(viewName)];
   if(!ids || !ids.length) return null;
   if(ids.length === 1) return ids[0];
+  // When duplicate names exist, prefer ID different from source/current view.
   for(var i = 0; i < ids.length; i++) {
     if(!currentViewId || String(ids[i]) !== String(currentViewId)) return ids[i];
   }
@@ -183,6 +208,8 @@ function resolveViewIdByName(viewName, currentViewId) {
 }
 
 function resolveReferencedViewIdDeep(diagramElement, currentViewId) {
+  // Defensive bounded traversal to avoid heavy scans/cycles.
+  // Depth is capped and object instances are tracked in "visited".
   var visited = [];
   var best = null;
   var bestScore = -999999;
@@ -195,6 +222,7 @@ function resolveReferencedViewIdDeep(diagramElement, currentViewId) {
   }
 
   function scoreForKey(key) {
+    // Heuristic weights: keys semantically linked to view references rank higher.
     var k = String(key || '').toLowerCase();
     var score = 0;
     if(k.indexOf('referenced') !== -1) score += 6;
@@ -220,6 +248,7 @@ function resolveReferencedViewIdDeep(diagramElement, currentViewId) {
     if(depth > 3) return;
     var t = typeof value;
     if(t === 'string') {
+      // Some proxies expose only raw string IDs.
       consider(String(value), scoreForKey(keyHint));
       return;
     }
@@ -237,6 +266,8 @@ function resolveReferencedViewIdDeep(diagramElement, currentViewId) {
     }
     catch(err) {}
 
+    // Properties inspected first during deep traversal.
+    // Ordered from most likely to contain target view references to generic fields.
     var props = [
       'referencedView', 'referencedModel', 'viewRef', 'view', 'model', 'targetView', 'target',
       'ref', 'id'
@@ -252,8 +283,10 @@ function resolveReferencedViewIdDeep(diagramElement, currentViewId) {
     }
   }
 
+  // Start traversal from the diagram element itself.
   visit(diagramElement, 0, 'root');
   if(!best) return null;
+  // Extra safeguard: never return source/current view as deep-resolution result.
   if(currentViewId && String(best) === String(currentViewId)) return null;
   return best;
 }

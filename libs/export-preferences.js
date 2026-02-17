@@ -1,6 +1,13 @@
 // Export preference and path helpers
 // This module centralizes persistence and default export path resolution.
 
+var File = Java.type('java.io.File');
+var Files = Java.type('java.nio.file.Files');
+var Paths = Java.type('java.nio.file.Paths');
+var StandardCharsets = Java.type('java.nio.charset.StandardCharsets');
+var System = Java.type('java.lang.System');
+var URI = Java.type('java.net.URI');
+
 function getHotspotZoomFactorFromArchiPreference() {
   var scaleImageExport = getArchiScaleImageExportPreference();
   return scaleImageExport === true ? 2 : 1;

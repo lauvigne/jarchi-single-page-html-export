@@ -2,6 +2,10 @@
 // Centralizes template compilation so the main script stays focused on export flow.
 
 function loadCompiledTemplates(underscoreLib, rootDir) {
+  underscoreLib.templateSettings = {
+    interpolate: /\{\{(.+?)\}\}/g
+  };
+
   var compile = underscoreLib.template;
   var readTemplate = function(relativePath) {
     return readFully(rootDir + relativePath, 'UTF-8');
