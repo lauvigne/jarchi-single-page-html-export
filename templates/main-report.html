@@ -90,15 +90,6 @@ Copyright (c) 2020 Phillip Beauvoir & Jean-Baptiste Sarrodie - MIT License
 		  }
 
 /* Utilities */
-  		.right {
-				float: right;
-			}
-			.left {
-				float: left;
-			}
-			.text-right {
-				text-align: right;
-			}
 			.spacer {
 				/* Used only inside a "flex" container */
 				margin-right: auto;
@@ -136,12 +127,15 @@ Copyright (c) 2020 Phillip Beauvoir & Jean-Baptiste Sarrodie - MIT License
 		  	margin-top: {{mainMargin}};	/* set some space above tabs */
 		  	text-align: center;					/* center tabs' headers */
 		  }
-			.tabs > input + label {
+			.tabs > input + label,
+			.view-element-tabs > label {
 				padding: 0 25px 18px 25px;	/* set some space between tabs' headers and below*/
 				text-transform: uppercase;	/* tabs' headers are uppercase */
 				color: #aaaaaa;							/* non selected tabs' headers color */
 			}
-			.tabs > input:checked + label {
+			.tabs > input:checked + label,
+      .view-element-selector > #selected-element-panel-tab-doc:checked ~ .view-element-panel .view-element-tabs > label[for="selected-element-panel-tab-doc"],
+      .view-element-selector > #selected-element-panel-tab-props:checked ~ .view-element-panel .view-element-tabs > label[for="selected-element-panel-tab-props"] {
 				color: #666666;							/* selected tab's header color */
 				border-bottom: 2px solid #0074D9;	/* selected tab's header has a blue bottom border */
 			}
@@ -386,14 +380,6 @@ Copyright (c) 2020 Phillip Beauvoir & Jean-Baptiste Sarrodie - MIT License
         }
         .view-element-tabs > label {
           width: 50%;
-          padding: 0 25px 18px 25px;
-          text-transform: uppercase;
-          color: #aaaaaa;
-        }
-        .view-element-selector > #selected-element-panel-tab-doc:checked ~ .view-element-panel .view-element-tabs > label[for="selected-element-panel-tab-doc"],
-        .view-element-selector > #selected-element-panel-tab-props:checked ~ .view-element-panel .view-element-tabs > label[for="selected-element-panel-tab-props"] {
-          color: #666666;
-          border-bottom: 2px solid #0074D9;
         }
         .view-element-tabs > .row {
           width: 200%;
@@ -433,11 +419,6 @@ Copyright (c) 2020 Phillip Beauvoir & Jean-Baptiste Sarrodie - MIT License
           color: #607d8b;
           font-style: italic;
           margin: 4px 0 0 0;
-        }
-        .view-element-panel .view-element-panel-doc,
-        .view-element-panel .view-element-panel-props {
-          font-size: 0.9em;
-          line-height: 1.35;
         }
         .views .tabs.three > .row > div:nth-child(2) table,
         .views .tabs.three > .row > div:nth-child(3) table {

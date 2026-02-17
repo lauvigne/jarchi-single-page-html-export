@@ -1,5 +1,20 @@
 // Shared utility helpers
 
+function alert(message) {
+  var msg = String(message || '');
+  try {
+    if(typeof window !== 'undefined' && window && typeof window.alert === 'function') {
+      window.alert(msg);
+    }
+    else {
+      console.log(msg);
+    }
+  }
+  catch(err) {
+    console.log(msg);
+  }
+}
+
 function hasActiveModel(modelRef) {
   try {
     // Accessing CurrentModel properties throws when no model is selected.
@@ -13,7 +28,8 @@ function hasActiveModel(modelRef) {
 
 function ensureActiveModelOrExit(modelRef, message) {
   if(hasActiveModel(modelRef)) return true;
-  window.alert(message || 'No active model selected. Open/select a model, then run the export again.');
+  var msg = message || 'No active model selected. Open/select a model, then run the export again.';
+  alert(msg);
   exit();
   return false;
 }
