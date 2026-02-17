@@ -70,18 +70,6 @@ var icon = readFully(__DIR__ + 'resources/icon.css', 'UTF-8');
 var picnic = readFully(__DIR__ + 'resources/picnic-custom.css', 'UTF-8');
 
 var compiledTemplates = loadCompiledTemplates(_, __DIR__);
-var tplMainReport = compiledTemplates.mainReport;
-var tplVisibilityRuleBold = compiledTemplates.visibilityRuleBold;
-var tplVisibilityRuleReveal = compiledTemplates.visibilityRuleReveal;
-var tplVisibilityRuleRevealBlock = compiledTemplates.visibilityRuleRevealBlock;
-var tplInputCheckbox = compiledTemplates.inputCheckbox;
-var tplTreeView = compiledTemplates.treeView;
-var tplTreeFolder = compiledTemplates.treeFolder;
-var tplViewHotspotCompact = compiledTemplates.viewHotspotCompact;
-var tplViewComponent = compiledTemplates.viewComponent;
-var tplViewElementPanel = compiledTemplates.viewElementPanel;
-var tplElement = compiledTemplates.element;
-var tplRelationship = compiledTemplates.relationship;
 
 var File = Java.type('java.io.File');
 var Files = Java.type('java.nio.file.Files');
@@ -94,7 +82,6 @@ var visibilityRulesBoldParts = [];
 var visibilityRulesRevealParts = [];
 var visibilityRulesRevealBlockParts = [];
 var inputCheckboxParts = [];
-var treeFolder = '';
 var treeContent = '';
 var viewComponents = [];
 var viewComponentsHtml = '';
@@ -146,7 +133,7 @@ var minifyHtmlOutputEnabled = activeProfile.minifyHtmlOutput !== false;
 var hotspotZoomFactor = getHotspotZoomFactorFromArchiPreference();
 initHotspotGeometry({
   _: _,
-  tplViewHotspotCompact: function() { return tplViewHotspotCompact; },
+  tplViewHotspotCompact: function() { return compiledTemplates.viewHotspotCompact; },
   getViewDomId: getViewDomId,
   getElementSelectorDomId: getElementSelectorDomId,
   getDiagramNodeHotspotTarget: getDiagramNodeHotspotTarget,
@@ -184,12 +171,12 @@ allPreferences[modelPreferenceKey] = profileStore;
 writeExportPreferences(preferencesFile, allPreferences);
 
 _.chain(folders).sortBy(function(f) { return f.name; }).each(function(f) {
-  exportViews(f);
+  exportViews(f, compiledTemplates);
 });
 
 aggregateRenderedViewComponents(viewComponents);
 
-function exportViews(folder) {
+function exportViews(folder, compiledTemplates) {
   if(isHiddenFromExport(folder)) {
     console.log('Skipping hidden folder "', folder.name, '" (_hide_from_export_=true)');
     return;
@@ -199,12 +186,12 @@ function exportViews(folder) {
   var isViewsRootFolder = viewsRootFolderId && String(folder.id) === viewsRootFolderId;
   treeContent = '';
   _.chain($(folder).children('folder').filter(function(f) { return !isHiddenFromExport(f); })).sortBy(function(f) { return f.name; }).each(function(f) {
-    exportViews(f)
+    exportViews(f, compiledTemplates)
   });
   _.chain($(folder).children('view').filter(function(v) { return !isHiddenFromExport(v); })).sortBy(function(v) { return v.name; }).each(function(v) {
     // Build and render one autonomous component model per view, then aggregate.
     var viewModel = buildViewModel(v);
-    var renderedComponent = renderViewComponent(viewModel);
+    var renderedComponent = renderViewComponent(viewModel, compiledTemplates);
     viewComponents.push(renderedComponent);
 
     treeContent += renderedComponent.treeItem;
@@ -231,7 +218,7 @@ function exportViews(folder) {
     treeContent = previousContent + treeContent;
   }
   else {
-    treeContent = tplTreeFolder({folderId: getFolderDomId(folder.id), folderName: _.escape(folder.name), folderContent: treeContent});
+    treeContent = compiledTemplates.treeFolder({folderId: getFolderDomId(folder.id), folderName: _.escape(folder.name), folderContent: treeContent});
     treeContent = previousContent + treeContent;
   }
 }
@@ -253,27 +240,27 @@ function buildViewModel(view) {
   };
 }
 
-function renderViewComponent(viewModel) {
+function renderViewComponent(viewModel, compiledTemplates) {
   var viewInteraction = buildViewInteraction(viewModel.rawView, viewModel.viewImageSize, hotspotZoomFactor);
 
   return {
-    treeItem: tplTreeView({
+    treeItem: compiledTemplates.treeView({
       viewId: viewModel.viewId,
       viewName: viewModel.viewName
     }),
-    visibilityBoldRule: tplVisibilityRuleBold({
+    visibilityBoldRule: compiledTemplates.visibilityRuleBold({
       viewId: viewModel.viewId
     }),
-    visibilityRevealRule: tplVisibilityRuleReveal({
+    visibilityRevealRule: compiledTemplates.visibilityRuleReveal({
       viewId: viewModel.viewId
     }),
-    visibilityRevealBlockRule: tplVisibilityRuleRevealBlock({
+    visibilityRevealBlockRule: compiledTemplates.visibilityRuleRevealBlock({
       viewId: viewModel.viewId
     }),
-    inputCheckbox: tplInputCheckbox({
+    inputCheckbox: compiledTemplates.inputCheckbox({
       viewId: viewModel.viewId
     }),
-    viewComponent: tplViewComponent({
+    viewComponent: compiledTemplates.viewComponent({
       viewId: viewModel.viewId,
       viewName: viewModel.viewName,
       viewImagePath: viewModel.viewImagePath,
@@ -295,11 +282,11 @@ function aggregateRenderedViewComponents(components) {
   viewComponentsHtml = viewComponentParts.join('');
 }
 
-globalElementPanelSelector = buildGlobalElementPanelSelector(elementsCollection);
+globalElementPanelSelector = buildGlobalElementPanelSelector(elementsCollection, compiledTemplates);
 
 var elementParts = [];
 _.chain(elementsCollection).sortBy(function(e) { return e.name; }).each(function(e) {
-  elementParts.push(tplElement({
+  elementParts.push(compiledTemplates.element({
     viewsIds: getViewClassesForConcept(e.id),
     elementName: renderConceptLink(e, _.escape(e.name)),
     elementType: properCase(e.type)
@@ -309,7 +296,7 @@ elements = elementParts.join('');
 
 var relationshipParts = [];
 _.chain(relationshipsCollection).sortBy(function(r) { return r.name; }).each(function(r) {
-  relationshipParts.push(tplRelationship({
+  relationshipParts.push(compiledTemplates.relationship({
     viewsIds: getViewClassesForConcept(r.id),
     relationshipName: _.escape(r.name),
     relationshipType: properCase(r.type),
@@ -319,7 +306,7 @@ _.chain(relationshipsCollection).sortBy(function(r) { return r.name; }).each(fun
 });
 relationships = relationshipParts.join('');
 
-var mainReport = tplMainReport({
+var mainReport = compiledTemplates.mainReport({
   roboto: minifyHtmlOutputEnabled ? minifyCssText(roboto) : roboto,
   icon: minifyHtmlOutputEnabled ? minifyCssText(icon) : icon,
   picnic: minifyHtmlOutputEnabled ? minifyCssText(picnic) : picnic,
@@ -394,14 +381,14 @@ function getViewClassesForConcept(conceptId) {
   return tokens.join(' ');
 }
 
-function buildGlobalElementPanelSelector(allElements) {
+function buildGlobalElementPanelSelector(allElements, compiledTemplates) {
   var panels = '';
   elementPanelSelectorByConceptId = {};
   if(allElements) {
     _.chain(allElements).sortBy(function(e) { return e.name; }).each(function(e) {
       var selectorId = getElementSelectorDomId(e.id);
       elementPanelSelectorByConceptId[String(e.id)] = selectorId;
-      panels += tplViewElementPanel({
+      panels += compiledTemplates.viewElementPanel({
         selectorId: selectorId,
         selectorName: GLOBAL_ELEMENT_SELECTOR_NAME,
         noneSelectorId: GLOBAL_ELEMENT_NONE_SELECTOR_ID,
