@@ -1,10 +1,10 @@
 // Template loading helpers
 // Centralizes template compilation so the main script stays focused on export flow.
 
-function loadCompiledTemplates(underscoreLib) {
+function loadCompiledTemplates(underscoreLib, rootDir) {
   var compile = underscoreLib.template;
   var readTemplate = function(relativePath) {
-    return readFully(__DIR__ + relativePath, 'UTF-8');
+    return readFully(rootDir + relativePath, 'UTF-8');
   };
 
   return {
