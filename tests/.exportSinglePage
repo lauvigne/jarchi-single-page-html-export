@@ -3,19 +3,7 @@
     "activeProfile": "default",
     "profiles": {
       "default": {
-        "directory": "/Users/lauvigne/Documents/Archi/scripts/jarchi-single-page-html-export/tests/.exports/default",
-        "baseHref": "./",
-        "bannerMessage": "",
-        "markdownEnabled": true,
-        "minifyHtmlOutput": true
-      }
-    }
-  },
-  "id:id-93412f48b6764d2db81b319b4b6750a8": {
-    "activeProfile": "default",
-    "profiles": {
-      "default": {
-        "directory": "/Applications/Archi-5.7.0.app/Contents/MacOS/tests/.exports/default",
+        "directory": ".exports/default",
         "baseHref": "./",
         "bannerMessage": "",
         "markdownEnabled": true,
