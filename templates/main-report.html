@@ -332,33 +332,6 @@ Copyright (c) 2020 Phillip Beauvoir & Jean-Baptiste Sarrodie - MIT License
           pointer-events: none;
           z-index: 2;
         }
-        .view-image-script-bounds {
-          display: none;
-          position: absolute;
-          top: 0;
-          left: 0;
-          right: 0;
-          bottom: 0;
-          border: 2px dashed #00c853;
-          box-sizing: border-box;
-          pointer-events: none;
-          z-index: 1;
-        }
-        .view-image-script-bounds-label {
-          position: absolute;
-          top: -18px;
-          left: 0;
-          background: rgba(0, 200, 83, 0.85);
-          color: #fff;
-          font-size: 10px;
-          line-height: 1;
-          padding: 3px 5px;
-          border-radius: 3px;
-          white-space: nowrap;
-        }
-        .debug-hotspots .view-image-script-bounds {
-          display: block;
-        }
         .view-hotspot {
           position: absolute;
           display: block;
@@ -368,37 +341,6 @@ Copyright (c) 2020 Phillip Beauvoir & Jean-Baptiste Sarrodie - MIT License
           background: transparent;
           box-sizing: border-box;
           z-index: 3;
-        }
-        .debug-hotspots .view-hotspot {
-          border: 1px solid #ff1744;
-          background: rgba(255, 23, 68, 0.14);
-        }
-        .debug-hotspots .view-hotspot:hover {
-          border-color: #00b0ff;
-          background: rgba(0, 176, 255, 0.22);
-        }
-        .debug-hotspots .view-hotspot::after {
-          content: "";
-          position: absolute;
-          top: 0;
-          left: 0;
-          width: 6px;
-          height: 6px;
-          background: #111;
-        }
-        .debug-hotspots .view-hotspot::before {
-          content: attr(data-debug);
-          position: absolute;
-          top: -1.4em;
-          left: 0;
-          background: rgba(0, 0, 0, 0.7);
-          color: #fff;
-          font-size: 10px;
-          line-height: 1.2;
-          padding: 2px 4px;
-          white-space: nowrap;
-          pointer-events: none;
-          z-index: 1000;
         }
         .view-element-selector {
           position: fixed;
@@ -586,7 +528,7 @@ Copyright (c) 2020 Phillip Beauvoir & Jean-Baptiste Sarrodie - MIT License
 			}
 	  </style>
   </head>
-		<body{{bodyClassAttr}}>
+		<body>
       {{topSnackbar}}
 			<!--
 			  All inputs must be defined at root level because visibility relies on `input ~ *` selectors.

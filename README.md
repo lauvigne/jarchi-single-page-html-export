@@ -12,7 +12,7 @@ stored on Onedrive Pro, MsTeams or SharePoint Document Library.
 
 To use it, simply download the archive from the [latest release](https://github.com/archi-contribs/jarchi-single-page-html-export/releases) and unzip it in your `scripts` folder. Then select one or more folders containing views and run the script through the context menu.
 
-Markdown rendering of documentations is configured at export generation time (`true/false` prompt) and persisted per model. Only the selected format is emitted in the generated HTML.
+Markdown rendering of documentation is configured at export generation time (profile option) and persisted per model. Only the selected format is emitted in the generated HTML.
 
 ## Architecture (current)
 
@@ -32,7 +32,6 @@ The export is now organized around a **view component pipeline**:
 - `libs/hotspot-geometry.js`
   - hotspot geometry/normalization
   - recursive diagram traversal
-  - panel generation for selected elements
 - `libs/viewref-resolution.js`
   - target view resolution for `archimate-diagram-model` nodes
   - direct candidate resolution + deep fallback + name fallback
@@ -41,6 +40,8 @@ The export is now organized around a **view component pipeline**:
   - persisted preferences read/write
   - model preference key
   - Archi preference mapping (`SCALE_IMAGE_EXPORT` -> zoom factor)
+- `libs/archi-compat.js`
+  - compatibility wrappers for Archi API differences between versions
 
 This keeps `Generate Single-page HTML Export.ajs` focused on orchestration and report assembly.
 

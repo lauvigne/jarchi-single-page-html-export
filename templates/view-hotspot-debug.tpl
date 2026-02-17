@@ -1,1 +1,0 @@
-<label class="view-hotspot" data-debug="{{debugText}}" for="{{selectorId}}" title="{{elementName}}" style="left:{{left}}%;top:{{top}}%;width:{{width}}%;height:{{height}}%;z-index:{{zIndex}};"></label>

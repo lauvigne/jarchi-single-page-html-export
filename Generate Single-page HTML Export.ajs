@@ -67,6 +67,7 @@ var mdOptions = {
 };
 
 load(__DIR__ + 'libs/viewref-resolution.js');
+load(__DIR__ + 'libs/archi-compat.js');
 load(__DIR__ + 'libs/hotspot-geometry.js');
 load(__DIR__ + 'libs/concept-properties.js');
 load(__DIR__ + 'libs/export-preferences.js');
@@ -84,7 +85,6 @@ var tplVisibilityRuleRevealBlock = _.template(readFully(__DIR__ + 'templates/vis
 var tplInputCheckbox = _.template(readFully(__DIR__ + 'templates/input-checkbox.tpl', 'UTF-8'));
 var tplTreeView = _.template(readFully(__DIR__ + 'templates/model-tree-view.tpl', 'UTF-8'));
 var tplTreeFolder = _.template(readFully(__DIR__ + 'templates/model-tree-folder.tpl', 'UTF-8'));
-var tplViewHotspotDebug = _.template(readFully(__DIR__ + 'templates/view-hotspot-debug.tpl', 'UTF-8'));
 var tplViewHotspotCompact = _.template(readFully(__DIR__ + 'templates/view-hotspot-compact.tpl', 'UTF-8'));
 var tplViewComponent = _.template(readFully(__DIR__ + 'templates/view-component.tpl', 'UTF-8'));
 var tplViewElementPanel = _.template(readFully(__DIR__ + 'templates/view-element-panel.tpl', 'UTF-8'));
@@ -96,10 +96,7 @@ var Files = Java.type('java.nio.file.Files');
 var Paths = Java.type('java.nio.file.Paths');
 var System = Java.type('java.lang.System');
 var URI = Java.type('java.net.URI');
-var StandardCharsets = Java.type('java.nio.charset.StandardCharsets');
 var ImageIO = Java.type('javax.imageio.ImageIO');
-var ArchiPlugin = Java.type("com.archimatetool.editor.ArchiPlugin");
-var IPreferenceConstants = Java.type("com.archimatetool.editor.preferences.IPreferenceConstants");
 
 var visibilityRulesBoldParts = [];
 var visibilityRulesRevealParts = [];
@@ -152,15 +149,11 @@ var rawModelPreferences = allPreferences[modelPreferenceKey] || {};
 var defaultExportDirPath = getDefaultExportDirectoryPath();
 var profileStore = normalizeModelPreferenceProfiles(rawModelPreferences, defaultExportDirPath);
 var activeProfile = profileStore.profiles[profileStore.activeProfile];
-var debugHotspots = activeProfile.debugHotspots === true;
 var markdownEnabled = activeProfile.markdownEnabled !== false;
 var minifyHtmlOutputEnabled = activeProfile.minifyHtmlOutput !== false;
-var exportStatsEnabled = activeProfile.exportStats === true;
 var hotspotZoomFactor = getHotspotZoomFactorFromArchiPreference();
 initHotspotGeometry({
   _: _,
-  debugHotspots: function() { return debugHotspots; },
-  tplViewHotspotDebug: function() { return tplViewHotspotDebug; },
   tplViewHotspotCompact: function() { return tplViewHotspotCompact; },
   getViewDomId: getViewDomId,
   getElementSelectorDomId: getElementSelectorDomId,
@@ -177,10 +170,8 @@ var selectedProfile = exportConfig.profile;
 var exportDirPath = selectedProfile.directory;
 var baseHref = selectedProfile.baseHref;
 var topBannerMessage = String(selectedProfile.bannerMessage || '');
-debugHotspots = selectedProfile.debugHotspots === true;
 markdownEnabled = selectedProfile.markdownEnabled !== false;
 minifyHtmlOutputEnabled = selectedProfile.minifyHtmlOutput !== false;
-exportStatsEnabled = selectedProfile.exportStats === true;
 
 var exportDirectory = new File(exportDirPath).getAbsoluteFile();
 if(!exportDirectory.exists()) exportDirectory.mkdirs();
@@ -259,14 +250,6 @@ function buildViewModel(view) {
   var viewImageFile = new File(imagesDirectory, view.id + '.png');
   $.model.renderViewToFile(view, viewImageFile.getPath(), "PNG");
   var imageSize = readImageSize(viewImageFile);
-  if(debugHotspots) {
-    console.log(
-      '[hotspot debug] render view=' + String(view.id) +
-      ' name="' + String(view.name || '') + '"' +
-      ' file=' + viewImageFile.getPath() +
-      ' size=' + String(imageSize && imageSize.width || '-') + 'x' + String(imageSize && imageSize.height || '-')
-    );
-  }
 
   return {
     rawView: view,
@@ -280,9 +263,6 @@ function buildViewModel(view) {
 
 function renderViewComponent(viewModel) {
   var viewInteraction = buildViewInteraction(viewModel.rawView, viewModel.viewImageSize, hotspotZoomFactor);
-  var debugBounds = getDebugScriptBoundsSize(viewModel.viewImageSize, hotspotZoomFactor);
-  var rawWidth = viewModel.viewImageSize && viewModel.viewImageSize.width ? String(viewModel.viewImageSize.width) : '';
-  var rawHeight = viewModel.viewImageSize && viewModel.viewImageSize.height ? String(viewModel.viewImageSize.height) : '';
 
   return {
     treeItem: tplTreeView({
@@ -305,26 +285,9 @@ function renderViewComponent(viewModel) {
       viewId: viewModel.viewId,
       viewName: viewModel.viewName,
       viewImagePath: viewModel.viewImagePath,
-      viewImageWidth: rawWidth,
-      viewImageHeight: rawHeight,
-      viewImageZoomedWidth: debugBounds.width,
-      viewImageZoomedHeight: debugBounds.height,
-      viewZoomFactor: String(hotspotZoomFactor || 1),
       viewHotspots: viewInteraction.hotspots,
       documentationContent: viewModel.documentationContent
     })
-  };
-}
-
-function getDebugScriptBoundsSize(imageSize, zoomFactor) {
-  if(!imageSize || !imageSize.width || !imageSize.height) {
-    return { width: '', height: '' };
-  }
-  var zoom = Number(zoomFactor);
-  if(!zoom || zoom <= 0) zoom = 1;
-  return {
-    width: String(toInt(Number(imageSize.width) / zoom)),
-    height: String(toInt(Number(imageSize.height) / zoom))
   };
 }
 
@@ -369,7 +332,6 @@ var mainReport = tplMainReport({
   icon: minifyHtmlOutputEnabled ? minifyCssText(icon) : icon,
   picnic: minifyHtmlOutputEnabled ? minifyCssText(picnic) : picnic,
   baseHref: _.escape(baseHref),
-  bodyClassAttr: buildBodyClassAttr(debugHotspots),
   topSnackbar: renderTopSnackbar(topBannerMessage, baseHref),
   modelTitle: _.escape(model.name),
   visibilityRulesBold: visibilityRulesBoldParts.join(''),
@@ -399,17 +361,9 @@ var mainReport = tplMainReport({
   treeMargin: '1.3em'
 });
 
-if(exportStatsEnabled) {
-  logExportStats('Before minify', mainReport);
-}
-
 if(minifyHtmlOutputEnabled) {
   mainReport = minifyInlineCssBlocks(mainReport);
   mainReport = minifyGeneratedHtml(mainReport);
-}
-
-if(exportStatsEnabled) {
-  logExportStats('Final output', mainReport);
 }
 
 $.fs.writeFile(indexFilePath, mainReport, 'UTF-8');
@@ -477,13 +431,6 @@ function buildGlobalElementPanelSelector(allElements) {
       panels +
     '</div>'
   );
-}
-
-function buildBodyClassAttr(debugHotspots) {
-  var classes = [];
-  if(debugHotspots) classes.push('debug-hotspots');
-  if(!classes.length) return '';
-  return ' class="' + classes.join(' ') + '"';
 }
 
 function renderTopSnackbar(rawMessage, rawBaseHref) {
@@ -566,58 +513,6 @@ function getShortDomIdNumeric(kindPrefix, rawId) {
     domIdMap[key] = domIdCounter;
   }
   return domIdMap[key];
-}
-
-function logExportStats(label, html) {
-  var stats = computeHtmlStats(html);
-  console.log('#################### EXPORT STATS (' + label + ') ####################');
-  console.log('Total bytes       : ' + stats.totalBytes);
-  console.log('Inline CSS bytes  : ' + stats.inlineCssBytes + ' (' + stats.inlineCssBlocks + ' blocks)');
-  console.log('Hotspots bytes    : ' + stats.hotspotsBytes + ' (' + stats.hotspotCount + ' hotspots)');
-  console.log('Tables bytes      : ' + stats.tablesBytes + ' (' + stats.tableCount + ' tables)');
-  console.log('Panels bytes      : ' + stats.panelsBytes + ' (' + stats.panelCount + ' panels)');
-  console.log('############################################################');
-}
-
-function computeHtmlStats(html) {
-  var text = String(html || '');
-  var inlineCssMatches = matchAll(text, /<style>([\s\S]*?)<\/style>/g);
-  var hotspotMatches = matchAll(text, /<label class="view-hotspot"[^>]*><\/label>/g);
-  var tableMatches = matchAll(text, /<table[\s\S]*?<\/table>/g);
-  var panelMatches = matchAll(text, /<div class="view-element-panel">[\s\S]*?<\/div>/g);
-
-  return {
-    totalBytes: utf8ByteLength(text),
-    inlineCssBytes: sumMatchBytes(inlineCssMatches),
-    inlineCssBlocks: inlineCssMatches.length,
-    hotspotsBytes: sumMatchBytes(hotspotMatches),
-    hotspotCount: hotspotMatches.length,
-    tablesBytes: sumMatchBytes(tableMatches),
-    tableCount: tableMatches.length,
-    panelsBytes: sumMatchBytes(panelMatches),
-    panelCount: panelMatches.length
-  };
-}
-
-function matchAll(text, pattern) {
-  var matches = [];
-  var m;
-  while((m = pattern.exec(text)) !== null) {
-    matches.push(m[0]);
-  }
-  return matches;
-}
-
-function sumMatchBytes(matches) {
-  var total = 0;
-  for(var i = 0; i < matches.length; i++) {
-    total += utf8ByteLength(matches[i]);
-  }
-  return total;
-}
-
-function utf8ByteLength(text) {
-  return String(text || '').getBytes(StandardCharsets.UTF_8).length;
 }
 
 function readImageSize(imageFile) {

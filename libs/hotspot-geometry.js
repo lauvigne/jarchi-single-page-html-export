@@ -3,8 +3,6 @@
 
 var hotspotGeometryContext = {
   _: null,
-  debugHotspots: null,
-  tplViewHotspotDebug: null,
   tplViewHotspotCompact: null,
   getViewDomId: null,
   getElementSelectorDomId: null,
@@ -20,22 +18,9 @@ function getHotspotGeometryUnderscore() {
   return hotspotGeometryContext._ || _;
 }
 
-function isHotspotDebugEnabled() {
-  if(typeof hotspotGeometryContext.debugHotspots === 'function') {
-    return hotspotGeometryContext.debugHotspots() === true;
-  }
-  if(typeof hotspotGeometryContext.debugHotspots === 'boolean') {
-    return hotspotGeometryContext.debugHotspots === true;
-  }
-  return typeof debugHotspots !== 'undefined' && debugHotspots === true;
-}
-
 function getHotspotTemplate() {
-  var debugTemplate = hotspotGeometryContext.tplViewHotspotDebug;
   var compactTemplate = hotspotGeometryContext.tplViewHotspotCompact;
-  if(typeof debugTemplate === 'function') debugTemplate = debugTemplate();
   if(typeof compactTemplate === 'function') compactTemplate = compactTemplate();
-  if(isHotspotDebugEnabled()) return debugTemplate || tplViewHotspotDebug;
   return compactTemplate || tplViewHotspotCompact;
 }
 
@@ -67,22 +52,8 @@ function isViewReferenceType(type) {
   return isViewReferenceDiagramType(type);
 }
 
-function logHotspotDebug(message) {
-  if(!isHotspotDebugEnabled()) return;
-  try {
-    console.log(message);
-  }
-  catch(err) {}
-}
-
 function buildViewInteraction(view, viewImageSize, hotspotZoomFactor) {
   var orderedEntries = collectOrderedViewEntries(view, hotspotZoomFactor);
-  logHotspotDebug(
-    '[hotspot debug] view=' + String(view && view.id || '-') +
-    ' orderedEntries=' + String(orderedEntries.length) +
-    ' zoom=' + String(hotspotZoomFactor) +
-    ' image=' + String(viewImageSize && viewImageSize.width || '-') + 'x' + String(viewImageSize && viewImageSize.height || '-')
-  );
   if(!orderedEntries.length) return emptyViewInteraction();
 
   var normalization = normalizeEntriesForRenderedImage(orderedEntries, viewImageSize);
@@ -90,11 +61,7 @@ function buildViewInteraction(view, viewImageSize, hotspotZoomFactor) {
     return emptyViewInteraction();
   }
 
-  var rendered = buildHotspotsAndPanels(
-    normalization.entries,
-    normalization.extents,
-    String(view.id)
-  );
+  var rendered = buildHotspotsAndPanels(normalization.entries, normalization.extents);
 
   return {
     hotspots: rendered.hotspots,
@@ -135,15 +102,6 @@ function normalizeEntriesForRenderedImage(orderedEntries, viewImageSize) {
 
   var extents = resolveHotspotExtents(normalizedEntries, viewImageSize);
   if(!extents) return null;
-
-  logHotspotDebug(
-    '[hotspot debug] bounds=' +
-    ' min(' + String(diagramBounds.minX) + ',' + String(diagramBounds.minY) + ')' +
-    ' size(' + String(diagramBounds.width) + 'x' + String(diagramBounds.height) + ')' +
-    ' offsets(' + String(rootOffsets.rootOffsetX) + ',' + String(rootOffsets.rootOffsetY) + ')' +
-    ' extents=' + String(extents.width) + 'x' + String(extents.height) +
-    ' normalizedEntries=' + String(normalizedEntries.length)
-  );
 
   return {
     entries: normalizedEntries,
@@ -200,36 +158,23 @@ function resolveHotspotExtents(normalizedEntries, viewImageSize) {
   return calculateExtents(normalizedEntries);
 }
 
-function buildHotspotsAndPanels(normalizedEntries, extents, viewId) {
+function buildHotspotsAndPanels(normalizedEntries, extents) {
   var hotspotEntries = [];
 
   getHotspotGeometryUnderscore().each(normalizedEntries, function(entry) {
-    var hotspotEntry = buildHotspotEntry(entry, extents, viewId);
+    var hotspotEntry = buildHotspotEntry(entry, extents);
     if(!hotspotEntry) return;
     hotspotEntries.push(hotspotEntry);
   });
 
   var orderedHotspots = orderHotspotsForRendering(hotspotEntries);
-  if(orderedHotspots.length) {
-    var first = orderedHotspots[0];
-    logHotspotDebug(
-      '[hotspot debug] view=' + String(viewId) +
-      ' hotspots=' + String(orderedHotspots.length) +
-      ' first=' + String(first.elementName || '') +
-      ' left=' + String(first.left) + '% top=' + String(first.top) +
-      '% w=' + String(first.width) + '% h=' + String(first.height) + '%'
-    );
-  }
-  else {
-    logHotspotDebug('[hotspot debug] view=' + String(viewId) + ' hotspots=0');
-  }
   return {
     hotspots: renderHotspots(orderedHotspots),
     panels: ''
   };
 }
 
-function buildHotspotEntry(entry, extents, viewId) {
+function buildHotspotEntry(entry, extents) {
   var percent = boundsToPercent(entry, extents);
   if(!percent) return null;
 
@@ -246,8 +191,7 @@ function buildHotspotEntry(entry, extents, viewId) {
     width: percent.width,
     height: percent.height,
     isViewRef: isViewRef,
-    area: entry.width * entry.height,
-    debugText: 'px[' + entry.x + ',' + entry.y + ' ' + entry.width + 'x' + entry.height + '] %[' + percent.left + ',' + percent.top + ' ' + percent.width + 'x' + percent.height + ']'
+    area: entry.width * entry.height
   };
 }
 
@@ -273,8 +217,7 @@ function renderHotspots(hotspotEntries) {
       top: h.top,
       width: h.width,
       height: h.height,
-      zIndex: 10 + index,
-      debugText: h.debugText
+      zIndex: 10 + index
     }));
   });
   return parts.join('');

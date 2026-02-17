@@ -2,28 +2,8 @@
 // This module centralizes persistence and default export path resolution.
 
 function getHotspotZoomFactorFromArchiPreference() {
-  var prefKey = IPreferenceConstants.SCALE_IMAGE_EXPORT;
-
-  // Archi 5.4.x compatibility: static preferences accessor is available.
-  try {
-    if(ArchiPlugin && ArchiPlugin.PREFERENCES && typeof ArchiPlugin.PREFERENCES.getBoolean === 'function') {
-      var scaleFromStatic = ArchiPlugin.PREFERENCES.getBoolean(prefKey);
-      return scaleFromStatic ? 2 : 1;
-    }
-  }
-  catch(errStatic) {}
-
-  // Archi 5.7.x path (and some intermediate versions).
-  try {
-    var scaleImageExport = ArchiPlugin.getInstance()
-      .getPreferenceStore()
-      .getBoolean(prefKey);
-    return scaleImageExport ? 2 : 1;
-  }
-  catch(errInstance) {
-    console.error('Unable to retrieve SCALE_IMAGE_EXPORT preference, fallback zoomFactor=1');
-    return 1;
-  }
+  var scaleImageExport = getArchiScaleImageExportPreference();
+  return scaleImageExport === true ? 2 : 1;
 }
 
 function getDefaultExportDirectoryPath() {
@@ -134,10 +114,8 @@ function getDefaultExportProfile(defaultExportDirPath) {
     directory: String(defaultExportDirPath || ''),
     baseHref: './',
     bannerMessage: '',
-    debugHotspots: false,
     markdownEnabled: true,
-    minifyHtmlOutput: true,
-    exportStats: false
+    minifyHtmlOutput: true
   };
 }
 
@@ -172,10 +150,8 @@ function normalizeProfile(profile, defaultProfile) {
     directory: String(source.directory || defaultProfile.directory || ''),
     baseHref: normalizeBaseHref(source.baseHref || defaultProfile.baseHref),
     bannerMessage: String(source.bannerMessage || defaultProfile.bannerMessage || ''),
-    debugHotspots: normalizeBoolean(source.debugHotspots, defaultProfile.debugHotspots),
     markdownEnabled: normalizeBoolean(source.markdownEnabled, defaultProfile.markdownEnabled),
-    minifyHtmlOutput: normalizeBoolean(source.minifyHtmlOutput, defaultProfile.minifyHtmlOutput),
-    exportStats: normalizeBoolean(source.exportStats, defaultProfile.exportStats)
+    minifyHtmlOutput: normalizeBoolean(source.minifyHtmlOutput, defaultProfile.minifyHtmlOutput)
   };
 }
 
@@ -244,10 +220,8 @@ function promptExportConfigurationDialog(modelName, profileStore) {
     setText('directory', profile.directory);
     setText('baseHref', normalizeBaseHref(profile.baseHref));
     setText('bannerMessage', profile.bannerMessage || '');
-    setChecked('debugHotspots', profile.debugHotspots === true);
     setChecked('markdownEnabled', profile.markdownEnabled !== false);
     setChecked('minifyHtmlOutput', profile.minifyHtmlOutput !== false);
-    setChecked('exportStats', profile.exportStats === true);
   }
 
   var dialog = createDialog(
@@ -290,12 +264,6 @@ function promptExportConfigurationDialog(modelName, profileStore) {
           value: String(activeProfile.bannerMessage || ''),
           fill: true
         },
-        debugHotspots: {
-          type: 'checkbox',
-          label: 'Debug',
-          message: 'Enable hotspot debug mode',
-          value: activeProfile.debugHotspots === true
-        },
         markdownEnabled: {
           type: 'checkbox',
           label: 'Markdown',
@@ -307,12 +275,6 @@ function promptExportConfigurationDialog(modelName, profileStore) {
           label: 'Minify',
           message: 'Minify generated HTML output',
           value: activeProfile.minifyHtmlOutput !== false
-        },
-        exportStats: {
-          type: 'checkbox',
-          label: 'Stats',
-          message: 'Print export size stats in console',
-          value: activeProfile.exportStats === true
         }
       }
     },
