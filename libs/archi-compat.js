@@ -46,3 +46,28 @@ function getArchiScaleImageExportPreference() {
 
   return false;
 }
+
+function isArchiCommandLineApplication() {
+  try {
+    var SystemClass = Java.type("java.lang.System");
+    var appId = String(SystemClass.getProperty("eclipse.application") || "");
+    return appId === "com.archimatetool.commandline.app";
+  }
+  catch(err) {
+    return false;
+  }
+}
+
+function isJavaHeadlessEnvironment() {
+  try {
+    var GraphicsEnvironment = Java.type("java.awt.GraphicsEnvironment");
+    return GraphicsEnvironment.isHeadless() === true;
+  }
+  catch(err) {
+    return false;
+  }
+}
+
+function isArchiHeadlessMode() {
+  return isArchiCommandLineApplication() || isJavaHeadlessEnvironment();
+}

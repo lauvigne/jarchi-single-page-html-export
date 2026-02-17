@@ -125,12 +125,13 @@ if(! folders.size()) {
 var preferencesFile = getExportPreferencesFile();
 var allPreferences = readExportPreferences(preferencesFile);
 var modelPreferenceKey = getModelPreferenceKey();
-var rawModelPreferences = allPreferences[modelPreferenceKey] || {};
+var rawModelPreferences = getModelExportPreferences(allPreferences, modelPreferenceKey);
 var defaultExportDirPath = getDefaultExportDirectoryPath();
 var profileStore = normalizeModelPreferenceProfiles(rawModelPreferences, defaultExportDirPath);
-var activeProfile = profileStore.profiles[profileStore.activeProfile];
-var markdownEnabled = activeProfile.markdownEnabled !== false;
-var minifyHtmlOutputEnabled = activeProfile.minifyHtmlOutput !== false;
+var initialProfileName = getActiveProfileName(profileStore);
+var initialProfile = profileStore.profiles[initialProfileName] || getDefaultExportProfile(defaultExportDirPath);
+var markdownEnabled = initialProfile.markdownEnabled !== false;
+var minifyHtmlOutputEnabled = initialProfile.minifyHtmlOutput !== false;
 var hotspotZoomFactor = getHotspotZoomFactorFromArchiPreference();
 initHotspotGeometry({
   _: _,
@@ -140,7 +141,7 @@ initHotspotGeometry({
   getDiagramNodeHotspotTarget: getDiagramNodeHotspotTarget,
   isViewReferenceDiagramType: isViewReferenceDiagramType
 });
-var exportConfig = promptExportConfigurationDialog(model.name, profileStore);
+var exportConfig = resolveExportConfiguration(model.name, profileStore);
 if(!exportConfig) {
   console.log('User cancelled.');
   exit();
@@ -152,6 +153,15 @@ var baseHref = selectedProfile.baseHref;
 var topBannerMessage = String(selectedProfile.bannerMessage || '');
 markdownEnabled = selectedProfile.markdownEnabled !== false;
 minifyHtmlOutputEnabled = selectedProfile.minifyHtmlOutput !== false;
+
+// Resolve relative export directory against preferences file location.
+var exportDirFile = new File(String(exportDirPath || ''));
+if(!exportDirFile.isAbsolute()) {
+  var prefsParent = preferencesFile && preferencesFile.getParentFile ? preferencesFile.getParentFile() : null;
+  if(prefsParent) {
+    exportDirPath = new File(prefsParent, exportDirPath).getPath();
+  }
+}
 
 var exportDirectory = new File(exportDirPath).getAbsoluteFile();
 if(!exportDirectory.exists()) exportDirectory.mkdirs();
@@ -168,7 +178,8 @@ var indexFilePath = new File(exportDirectory, 'index.html').getPath();
 var imagesDirectory = new File(exportDirectory, 'images');
 if(!imagesDirectory.exists()) imagesDirectory.mkdirs();
 
-allPreferences[modelPreferenceKey] = profileStore;
+var preferencesWriteKey = getExportPreferencesWriteKey(allPreferences, modelPreferenceKey);
+allPreferences[preferencesWriteKey] = profileStore;
 writeExportPreferences(preferencesFile, allPreferences);
 
 _.chain(folders).sortBy(function(f) { return f.name; }).each(function(f) {

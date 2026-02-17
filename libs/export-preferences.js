@@ -43,10 +43,25 @@ function resolveDataLocationPath() {
 }
 
 function getExportPreferencesFile() {
+  var overridePath = getRequestedExportPreferencesFilePath();
+  if(overridePath) {
+    return new File(overridePath).getAbsoluteFile();
+  }
+
   var configArea = resolveConfigurationAreaPath();
   var configDir = configArea ? new File(configArea) : new File(System.getProperty('user.home'));
   if(!configDir.exists()) configDir.mkdirs();
   return new File(configDir, '.exportSinglePage');
+}
+
+function getRequestedExportPreferencesFilePath() {
+  var raw = System.getProperty('export.preferencesFilePath');
+  if(raw === null || raw === undefined) raw = System.getProperty('export.preferencesFile');
+  if(raw === null || raw === undefined) raw = System.getenv('EXPORT_PREFERENCES_FILE_PATH');
+  if(raw === null || raw === undefined) raw = System.getenv('EXPORT_PREFERENCES_FILE');
+  if(raw === null || raw === undefined) return null;
+  var path = String(raw).trim();
+  return path ? path : null;
 }
 
 function resolveConfigurationAreaPath() {
@@ -83,6 +98,28 @@ function readExportPreferences(preferencesFile) {
     console.log('Unable to read export preferences: ', err);
   }
   return {};
+}
+
+function getModelExportPreferences(allPreferences, modelPreferenceKey) {
+  var hasExternalPreferencesFile = !!getRequestedExportPreferencesFilePath();
+  if(hasExternalPreferencesFile && allPreferences && allPreferences.__default__) {
+    return allPreferences.__default__;
+  }
+  if(allPreferences && allPreferences[modelPreferenceKey]) {
+    return allPreferences[modelPreferenceKey];
+  }
+  if(allPreferences && allPreferences.__default__) {
+    return allPreferences.__default__;
+  }
+  return {};
+}
+
+function getExportPreferencesWriteKey(allPreferences, modelPreferenceKey) {
+  var hasExternalPreferencesFile = !!getRequestedExportPreferencesFilePath();
+  if(hasExternalPreferencesFile && allPreferences && allPreferences.__default__) {
+    return '__default__';
+  }
+  return modelPreferenceKey;
 }
 
 function writeExportPreferences(preferencesFile, allPreferences) {
@@ -193,6 +230,52 @@ function normalizeModelPreferenceProfiles(modelPreferences, defaultExportDirPath
   }
 
   return normalized;
+}
+
+function getActiveProfileName(profileStore) {
+  var names = Object.keys(profileStore.profiles || {});
+  if(!names.length) return 'default';
+  if(profileStore.activeProfile && profileStore.profiles[profileStore.activeProfile]) {
+    return profileStore.activeProfile;
+  }
+  return names[0];
+}
+
+function getRequestedExportProfileName() {
+  var raw = System.getProperty('export.profileName');
+  if(raw === null || raw === undefined) raw = System.getProperty('export.profile');
+  if(raw === null || raw === undefined) raw = System.getenv('EXPORT_PROFILE_NAME');
+  if(raw === null || raw === undefined) raw = System.getenv('EXPORT_PROFILE');
+  if(raw === null || raw === undefined) return null;
+  var profileName = String(raw).trim();
+  return profileName ? profileName : null;
+}
+
+function resolveExportConfiguration(modelName, profileStore) {
+  var requestedProfileName = getRequestedExportProfileName();
+  if(requestedProfileName) {
+    if(profileStore.profiles && profileStore.profiles[requestedProfileName]) {
+      profileStore.activeProfile = requestedProfileName;
+      console.log('Requested export profile: "' + requestedProfileName + '".');
+    }
+    else {
+      console.log('Requested export profile "' + requestedProfileName + '" was not found.');
+      return null;
+    }
+  }
+
+  if(isArchiHeadlessMode()) {
+    var headlessProfileName = getActiveProfileName(profileStore);
+    var headlessProfile = profileStore.profiles[headlessProfileName] || getDefaultExportProfile(getDefaultExportDirectoryPath());
+    console.log('Headless mode detected: using export profile "' + headlessProfileName + '".');
+    return {
+      profileName: headlessProfileName,
+      profile: normalizeProfile(headlessProfile, getDefaultExportProfile(getDefaultExportDirectoryPath())),
+      profileStore: profileStore
+    };
+  }
+
+  return promptExportConfigurationDialog(modelName, profileStore);
 }
 
 function promptExportConfigurationDialog(modelName, profileStore) {
