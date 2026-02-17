@@ -79,7 +79,7 @@ var roboto = readFully(__DIR__ + 'resources/roboto.css', 'UTF-8');
 var icon = readFully(__DIR__ + 'resources/icon.css', 'UTF-8');
 var picnic = readFully(__DIR__ + 'resources/picnic-custom.css', 'UTF-8');
 
-var compiledTemplates = loadCompiledTemplates(_);
+var compiledTemplates = loadCompiledTemplates(_, __DIR__);
 var tplMainReport = compiledTemplates.mainReport;
 var tplVisibilityRuleBold = compiledTemplates.visibilityRuleBold;
 var tplVisibilityRuleReveal = compiledTemplates.visibilityRuleReveal;
