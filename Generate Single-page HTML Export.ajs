@@ -39,6 +39,7 @@ const USE_REQUIRE = true;
 
 load(__DIR__ + 'libs/nashorn-polyfills.js');
 load(__DIR__ + 'libs/utils.js');
+load(__DIR__ + 'libs/template-loader.js');
 
 if(USE_REQUIRE) {
   _ = require(__DIR__ + "libs/underscore-min.js");
@@ -78,18 +79,19 @@ var roboto = readFully(__DIR__ + 'resources/roboto.css', 'UTF-8');
 var icon = readFully(__DIR__ + 'resources/icon.css', 'UTF-8');
 var picnic = readFully(__DIR__ + 'resources/picnic-custom.css', 'UTF-8');
 
-var tplMainReport = _.template(readFully(__DIR__ + 'templates/main-report.html', 'UTF-8'));
-var tplVisibilityRuleBold = _.template(readFully(__DIR__ + 'templates/visibility-rule-bold.tpl', 'UTF-8'));
-var tplVisibilityRuleReveal = _.template(readFully(__DIR__ + 'templates/visibility-rule-reveal.tpl', 'UTF-8'));
-var tplVisibilityRuleRevealBlock = _.template(readFully(__DIR__ + 'templates/visibility-rule-reveal-block.tpl', 'UTF-8'));
-var tplInputCheckbox = _.template(readFully(__DIR__ + 'templates/input-checkbox.tpl', 'UTF-8'));
-var tplTreeView = _.template(readFully(__DIR__ + 'templates/model-tree-view.tpl', 'UTF-8'));
-var tplTreeFolder = _.template(readFully(__DIR__ + 'templates/model-tree-folder.tpl', 'UTF-8'));
-var tplViewHotspotCompact = _.template(readFully(__DIR__ + 'templates/view-hotspot-compact.tpl', 'UTF-8'));
-var tplViewComponent = _.template(readFully(__DIR__ + 'templates/view-component.tpl', 'UTF-8'));
-var tplViewElementPanel = _.template(readFully(__DIR__ + 'templates/view-element-panel.tpl', 'UTF-8'));
-var tplElement = _.template(readFully(__DIR__ + 'templates/element.tpl', 'UTF-8'));
-var tplRelationship = _.template(readFully(__DIR__ + 'templates/relationship.tpl', 'UTF-8'));
+var compiledTemplates = loadCompiledTemplates(_);
+var tplMainReport = compiledTemplates.mainReport;
+var tplVisibilityRuleBold = compiledTemplates.visibilityRuleBold;
+var tplVisibilityRuleReveal = compiledTemplates.visibilityRuleReveal;
+var tplVisibilityRuleRevealBlock = compiledTemplates.visibilityRuleRevealBlock;
+var tplInputCheckbox = compiledTemplates.inputCheckbox;
+var tplTreeView = compiledTemplates.treeView;
+var tplTreeFolder = compiledTemplates.treeFolder;
+var tplViewHotspotCompact = compiledTemplates.viewHotspotCompact;
+var tplViewComponent = compiledTemplates.viewComponent;
+var tplViewElementPanel = compiledTemplates.viewElementPanel;
+var tplElement = compiledTemplates.element;
+var tplRelationship = compiledTemplates.relationship;
 
 var File = Java.type('java.io.File');
 var Files = Java.type('java.nio.file.Files');

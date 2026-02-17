@@ -42,6 +42,8 @@ The export is now organized around a **view component pipeline**:
   - Archi preference mapping (`SCALE_IMAGE_EXPORT` -> zoom factor)
 - `libs/archi-compat.js`
   - compatibility wrappers for Archi API differences between versions
+- `libs/template-loader.js`
+  - central template compilation and registration
 
 This keeps `Generate Single-page HTML Export.ajs` focused on orchestration and report assembly.
 
