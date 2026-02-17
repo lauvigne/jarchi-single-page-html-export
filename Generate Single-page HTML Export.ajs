@@ -74,6 +74,7 @@ var compiledTemplates = loadCompiledTemplates(_, __DIR__);
 var File = Java.type('java.io.File');
 var Files = Java.type('java.nio.file.Files');
 var Paths = Java.type('java.nio.file.Paths');
+var StandardCharsets = Java.type('java.nio.charset.StandardCharsets');
 var System = Java.type('java.lang.System');
 var URI = Java.type('java.net.URI');
 var ImageIO = Java.type('javax.imageio.ImageIO');
