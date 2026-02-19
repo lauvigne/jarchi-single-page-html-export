@@ -98,3 +98,121 @@ function parseExportFlag(value) {
   var lowered = String(value).trim().toLowerCase();
   return lowered === 'true' || lowered === '1' || lowered === 'yes';
 }
+
+var __exportDebugEnabled = null;
+function isExportDebugEnabled() {
+  if(__exportDebugEnabled !== null) return __exportDebugEnabled;
+  try {
+    var SystemClass = Java.type('java.lang.System');
+    var raw = SystemClass.getProperty('export.debug');
+    if(raw === null || raw === undefined) raw = SystemClass.getenv('EXPORT_DEBUG');
+    __exportDebugEnabled = parseExportFlag(raw);
+  }
+  catch(err) {
+    __exportDebugEnabled = false;
+  }
+  return __exportDebugEnabled;
+}
+
+function toErrorMessage(err) {
+  if(err === null || err === undefined) return 'Unknown error';
+  try {
+    if(typeof err.getMessage === 'function') {
+      var javaMsg = String(err.getMessage() || '').trim();
+      if(javaMsg) return javaMsg;
+    }
+  }
+  catch(ignoreJavaMessage) {}
+  try {
+    var text = String(err).trim();
+    return text || 'Unknown error';
+  }
+  catch(ignoreToString) {
+    return 'Unknown error';
+  }
+}
+
+function toErrorStack(err) {
+  if(err === null || err === undefined) return '';
+  try {
+    if(err.stack) return String(err.stack);
+  }
+  catch(ignoreJsStack) {}
+  try {
+    if(typeof err.getStackTrace === 'function') {
+      var stack = err.getStackTrace();
+      if(stack && typeof stack.length === 'number') {
+        var out = [];
+        for(var i = 0; i < stack.length; i++) out.push(String(stack[i]));
+        return out.join('\n');
+      }
+    }
+  }
+  catch(ignoreJavaStack) {}
+  return '';
+}
+
+function logWarn(message, err) {
+  var output = '[WARN] ' + String(message || '');
+  if(err) output += ' :: ' + toErrorMessage(err);
+  console.log(output);
+  if(err && isExportDebugEnabled()) {
+    var stack = toErrorStack(err);
+    if(stack) console.log(stack);
+  }
+}
+
+function logError(message, err) {
+  var output = '[ERROR] ' + String(message || '');
+  if(err) output += ' :: ' + toErrorMessage(err);
+  console.log(output);
+  if(err) {
+    var stack = toErrorStack(err);
+    if(stack) console.log(stack);
+  }
+}
+
+function addExportIssue(context, severity, stage, label, err) {
+  if(!context) return;
+  if(!context.exportIssues) context.exportIssues = [];
+
+  var normalizedSeverity = String(severity || 'error').toLowerCase();
+  var issue = {
+    severity: normalizedSeverity,
+    stage: String(stage || ''),
+    label: String(label || ''),
+    message: toErrorMessage(err)
+  };
+  context.exportIssues.push(issue);
+
+  if(normalizedSeverity === 'warning') {
+    context.warningCount = Number(context.warningCount || 0) + 1;
+    logWarn('[' + issue.stage + '] ' + issue.label, err);
+    return;
+  }
+
+  context.errorCount = Number(context.errorCount || 0) + 1;
+  logError('[' + issue.stage + '] ' + issue.label, err);
+}
+
+function printExportIssueSummary(context) {
+  if(!context) return;
+  var errorCount = Number(context.errorCount || 0);
+  var warningCount = Number(context.warningCount || 0);
+  var total = errorCount + warningCount;
+  if(!total) {
+    console.log('Export diagnostics: no warnings or errors.');
+    return;
+  }
+
+  console.log('Export diagnostics: ' + errorCount + ' error(s), ' + warningCount + ' warning(s).');
+  var issues = context.exportIssues || [];
+  for(var index = 0; index < issues.length; index++) {
+    var issue = issues[index];
+    var line = '[' + String(issue.severity || 'error').toUpperCase() + ']';
+    if(issue.stage) line += ' [' + issue.stage + ']';
+    if(issue.label) line += ' ' + issue.label;
+    if(issue.message) line += ' :: ' + issue.message;
+    console.log((index + 1) + '. ' + line);
+  }
+}

@@ -74,7 +74,12 @@ function createExportContext() {
     globalPanelTabPropsId: 'selected-element-panel-tab-props',
 
     // Views root marker
-    viewsRootFolderId: null
+    viewsRootFolderId: null,
+
+    // Diagnostics
+    exportIssues: [],
+    errorCount: 0,
+    warningCount: 0
   };
 
   initializeProfileStore(context);

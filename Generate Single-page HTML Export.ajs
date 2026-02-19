@@ -54,29 +54,44 @@ marked = require(__DIR__ + 'libs/marked.min.js');
 main();
 
 function main() {
-  initializeConsole();
-  ensureActiveModelOrExit(model, 'No active model selected. Open/select a model, then run the export again.');
+  var context = null;
+  try {
+    initializeConsole();
+    ensureActiveModelOrExit(model, 'No active model selected. Open/select a model, then run the export again.');
 
-  initViewRefResolution({
-    model: model,
-    _: _,
-    console: console
-  });
+    initViewRefResolution({
+      model: model,
+      _: _,
+      console: console
+    });
 
-  var context = createExportContext();
-  initializeHotspotRuntime(context);
+    context = createExportContext();
+    initializeHotspotRuntime(context);
 
-  if(!resolveExportDestination(context)) {
-    console.log(context.exportDestinationError || 'Export destination resolution failed.');
-    exit();
-    return;
+    if(!resolveExportDestination(context)) {
+      console.log(context.exportDestinationError || 'Export destination resolution failed.');
+      printExportIssueSummary(context);
+      exit();
+      return;
+    }
+
+    exportSelectedViews(context);
+    buildIndexArtifacts(context);
+    writeHtmlReport(context);
+
+    console.log('HTML report: ', context.indexFilePath);
+    console.log('Images folder: ', context.imagesDirectory.getPath());
+    printExportIssueSummary(context);
+    console.log('Export terminated.');
   }
-
-  exportSelectedViews(context);
-  buildIndexArtifacts(context);
-  writeHtmlReport(context);
-
-  console.log('HTML report: ', context.indexFilePath);
-  console.log('Images folder: ', context.imagesDirectory.getPath());
-  console.log('Export terminated.');
+  catch(err) {
+    if(context) {
+      addExportIssue(context, 'error', 'main', 'Unhandled export failure', err);
+      printExportIssueSummary(context);
+    }
+    else {
+      logError('Unhandled export failure before context initialization.', err);
+    }
+    exit();
+  }
 }

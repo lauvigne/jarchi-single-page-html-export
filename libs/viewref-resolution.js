@@ -21,6 +21,11 @@ var viewRefResolutionContext = {
   console: null
 };
 
+function logViewRefDebug(message, err) {
+  if(!isExportDebugEnabled()) return;
+  logWarn('[viewref] ' + String(message || ''), err);
+}
+
 function initViewRefResolution(context) {
   viewRefResolutionContext = context || {};
   // Reset caches for each export run/context to avoid stale mappings
@@ -166,7 +171,9 @@ function extractPotentialViewId(candidate) {
     if(candidate.id) return String(candidate.id);
     if(candidate.ref && candidate.ref.id) return String(candidate.ref.id);
   }
-  catch(err) {}
+  catch(err) {
+    logViewRefDebug('Failed extracting potential view id.', err);
+  }
   return null;
 }
 
@@ -177,7 +184,9 @@ function extractPotentialViewName(candidate) {
     if(candidate.name) return String(candidate.name);
     if(candidate.ref && candidate.ref.name) return String(candidate.ref.name);
   }
-  catch(err) {}
+  catch(err) {
+    logViewRefDebug('Failed extracting potential view name.', err);
+  }
   return null;
 }
 
@@ -264,7 +273,9 @@ function resolveReferencedViewIdDeep(diagramElement, currentViewId) {
         consider(String(value.ref.id), scoreForKey(keyHint) + 2);
       }
     }
-    catch(err) {}
+    catch(err) {
+      logViewRefDebug('Failed reading id/ref during deep viewref resolution.', err);
+    }
 
     // Properties inspected first during deep traversal.
     // Ordered from most likely to contain target view references to generic fields.
@@ -279,7 +290,9 @@ function resolveReferencedViewIdDeep(diagramElement, currentViewId) {
           visit(value[p], depth + 1, p);
         }
       }
-      catch(err) {}
+      catch(err) {
+        logViewRefDebug('Failed traversing property "' + String(p) + '" during deep viewref resolution.', err);
+      }
     }
   }
 

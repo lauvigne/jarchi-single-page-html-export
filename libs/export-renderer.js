@@ -31,12 +31,23 @@ function exportFolderTree(context, folder) {
   _.chain($(folder).children('view').filter(function(view) { return !isHiddenFromExport(view); }))
     .sortBy(function(view) { return view.name; })
     .each(function(view) {
-      var viewModel = buildViewModel(context, view);
-      var renderedComponent = renderViewComponent(context, viewModel);
+      try {
+        var viewModel = buildViewModel(context, view);
+        var renderedComponent = renderViewComponent(context, viewModel);
 
-      context.viewComponents.push(renderedComponent);
-      context.treeContent += renderedComponent.treeItem;
-      recordViewConcepts(context, view);
+        context.viewComponents.push(renderedComponent);
+        context.treeContent += renderedComponent.treeItem;
+        recordViewConcepts(context, view);
+      }
+      catch(err) {
+        addExportIssue(
+          context,
+          'error',
+          'render-view',
+          'Failed to export view "' + String(view.name || '(Unnamed)') + '" (' + String(view.id || '') + ')',
+          err
+        );
+      }
     });
 
   if(!isViewsRootFolder) {
@@ -55,7 +66,22 @@ function buildViewModel(context, view) {
   var viewImagePath = normalizeBaseHref(context.baseHref) + 'images/' + view.id + '.png';
   var viewImageFile = new File(context.imagesDirectory, view.id + '.png');
 
-  $.model.renderViewToFile(view, viewImageFile.getPath(), 'PNG');
+  try {
+    $.model.renderViewToFile(view, viewImageFile.getPath(), 'PNG');
+  }
+  catch(err) {
+    throw new Error(
+      'renderViewToFile failed for view "' + String(view.name || '(Unnamed)') + '" (' + String(view.id || '') + ')' +
+      ': ' + toErrorMessage(err)
+    );
+  }
+
+  if(!viewImageFile.exists()) {
+    throw new Error(
+      'renderViewToFile produced no output file for view "' + String(view.name || '(Unnamed)') + '" (' +
+      String(view.id || '') + ') at ' + viewImageFile.getPath()
+    );
+  }
 
   return {
     rawView: view,
@@ -141,7 +167,12 @@ function writeHtmlReport(context) {
     htmlReport = minifyGeneratedHtml(htmlReport);
   }
 
-  $.fs.writeFile(context.indexFilePath, htmlReport, 'UTF-8');
+  try {
+    $.fs.writeFile(context.indexFilePath, htmlReport, 'UTF-8');
+  }
+  catch(err) {
+    throw new Error('Unable to write HTML report at "' + String(context.indexFilePath || '') + '": ' + toErrorMessage(err));
+  }
 }
 
 function renderDocumentationContent(context, rawDocumentation) {
