@@ -216,3 +216,20 @@ function printExportIssueSummary(context) {
     console.log((index + 1) + '. ' + line);
   }
 }
+
+function resolveModuleFunction(moduleRef, candidates, moduleLabel) {
+  if(typeof moduleRef === 'function') return moduleRef;
+
+  var names = candidates && candidates.length ? candidates : [];
+  for(var i = 0; i < names.length; i++) {
+    var name = names[i];
+    if(moduleRef && typeof moduleRef[name] === 'function') {
+      return moduleRef[name];
+    }
+  }
+
+  var label = String(moduleLabel || 'module');
+  var expected = ['default function export'];
+  for(var j = 0; j < names.length; j++) expected.push('module.' + names[j] + ' function');
+  throw new Error('Unsupported ' + label + ' module shape. Expected ' + expected.join(', ') + '.');
+}

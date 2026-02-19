@@ -49,7 +49,11 @@ load(__DIR__ + 'libs/concept-properties.js');
 load(__DIR__ + 'libs/export-preferences.js');
 
 _ = require(__DIR__ + 'libs/underscore-min.js');
-marked = require(__DIR__ + 'libs/marked.min.js');
+marked = resolveModuleFunction(
+  require(__DIR__ + 'libs/marked.min.js'),
+  ['marked', 'parse'],
+  'marked'
+);
 
 main();
 
