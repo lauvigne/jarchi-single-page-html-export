@@ -310,7 +310,8 @@ function promptExportConfigurationDialog(modelName, profileStore) {
     if(!dialogLayout || !dialogLayout.properties || !profile) return;
     var props = dialogLayout.properties;
     function setText(name, value) {
-      var widget = props[name] && props[name].widget;
+      var property = props[name];
+      var widget = property && (property.inputWidget || property.widget);
       if(widget && typeof widget.setText === 'function') widget.setText(String(value || ''));
     }
     function setChecked(name, value) {
@@ -349,9 +350,12 @@ function promptExportConfigurationDialog(modelName, profileStore) {
           }
         },
         directory: {
-          type: 'text',
+          type: 'file',
           label: 'Export directory',
           value: String(activeProfile.directory || ''),
+          mode: 'directory',
+          buttonLabel: 'Browse...',
+          title: 'Select export directory',
           fill: true
         },
         baseHref: {

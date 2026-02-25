@@ -20,6 +20,8 @@ function createDialog(rootLayout,
     const GridLayout = Java.type('org.eclipse.swt.layout.GridLayout');
     const GridLayoutFactory = Java.type('org.eclipse.jface.layout.GridLayoutFactory');
     const Composite = Java.type('org.eclipse.swt.widgets.Composite');
+    const FileDialog = Java.type('org.eclipse.swt.widgets.FileDialog');
+    const DirectoryDialog = Java.type('org.eclipse.swt.widgets.DirectoryDialog');
     const Group = Java.type('org.eclipse.swt.widgets.Group');
     const LabelWidget = Java.type('org.eclipse.swt.widgets.Label');
     const ListWidget = Java.type('org.eclipse.swt.widgets.List');
@@ -70,6 +72,7 @@ function createDialog(rootLayout,
     const LocationAdapter = Java.extend(Java.type('org.eclipse.swt.browser.LocationAdapter'));
     const CustomFunction = Java.extend(Java.type('org.eclipse.swt.browser.BrowserFunction'));
     const StructuredSelection = Java.type('org.eclipse.jface.viewers.StructuredSelection');
+    const JavaFile = Java.type('java.io.File');
 
     let dialogObject = {};
     let valueMap = new Map();
@@ -187,7 +190,8 @@ function createDialog(rootLayout,
                 switch (propertyType) {
                     case "combo":
                     case "text":
-                        result[property] = propertyDefinition.widget.getText();
+                    case "file":
+                        result[property] = (propertyDefinition.inputWidget || propertyDefinition.widget).getText();
                         break;
                     case "option":
                         let buttons = propertyDefinition.widget.getChildren();
@@ -646,7 +650,7 @@ function createDialog(rootLayout,
         for (const property in layout.properties) {
             let propertyDefinition = layout.properties[property];
             let propertyType = propertyDefinition.type;
-            let { message, tooltip, echo, values, value, extend, span, direction, breakrow, min, max, icons, border, doEvent, relations, tree, fill, enable, disabled, selection, multi, verify, title, filter, objects, editable, toolbar } = propertyDefinition;
+            let { message, tooltip, echo, values, value, extend, span, direction, breakrow, min, max, icons, border, doEvent, relations, tree, fill, enable, disabled, selection, multi, verify, title, filter, objects, editable, toolbar, mode, buttonLabel, filterExtensions, filterNames, dialogMessage } = propertyDefinition;
             //let label = propertyDefinition.label ? propertyDefinition.label : property;
             let label = propertyDefinition.label ? propertyDefinition.label : null;
             let style = SWT.NONE;
@@ -785,6 +789,80 @@ function createDialog(rootLayout,
                                 dialogObject.shell.setActive();
                                 dialogObject.shell.setVisible(true);
                             }
+                        })
+                    }
+                    break;
+                case "file":
+                    let fileContainer = new Composite(container, SWT.NONE);
+                    let fileLayout = new GridLayout(2, false);
+                    fileLayout.marginWidth = 0;
+                    fileLayout.marginHeight = 0;
+                    fileContainer.setLayout(fileLayout);
+                    if (fill) fileContainer.setLayoutData(new GridData(GridData.FILL_HORIZONTAL));
+
+                    let fileInput = new TextWidget(fileContainer, SWT.SINGLE | SWT.BORDER);
+                    if (tooltip) fileInput.setToolTipText(tooltip);
+                    if (message) fileInput.setMessage(message);
+                    if (echo) fileInput.setEchoChar(echo);
+                    if (value !== undefined && value !== null) fileInput.setText(value.toString());
+                    fileInput.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false));
+
+                    let browseButton = new ButtonWidget(fileContainer, SWT.PUSH);
+                    browseButton.setText(buttonLabel ? String(buttonLabel) : "Browse...");
+
+                    browseButton.addListener(SWT.Selection, e => {
+                        let pickerMode = String(mode || "open").toLowerCase();
+                        let selectedPath = null;
+                        let currentPath = String(fileInput.getText() || '').trim();
+                        let currentFile = currentPath ? new JavaFile(currentPath) : null;
+                        if (pickerMode == "directory") {
+                            let directoryDialog = new DirectoryDialog(fileContainer.getShell());
+                            if (title) directoryDialog.setText(String(title));
+                            if (dialogMessage) directoryDialog.setMessage(String(dialogMessage));
+                            if (currentFile) {
+                                if (currentFile.isDirectory()) directoryDialog.setFilterPath(currentFile.getPath());
+                                else if (currentFile.getParent()) directoryDialog.setFilterPath(currentFile.getParent());
+                            }
+                            selectedPath = directoryDialog.open();
+                        }
+                        else {
+                            let dialogStyle = pickerMode == "save" ? SWT.SAVE : SWT.OPEN;
+                            let fileDialog = new FileDialog(fileContainer.getShell(), dialogStyle);
+                            if (title) fileDialog.setText(String(title));
+                            if (Array.isArray(filterExtensions) && filterExtensions.length) {
+                                fileDialog.setFilterExtensions(Java.to(filterExtensions.map(String), StringArray));
+                            }
+                            if (Array.isArray(filterNames) && filterNames.length) {
+                                fileDialog.setFilterNames(Java.to(filterNames.map(String), StringArray));
+                            }
+                            if (currentFile) {
+                                if (currentFile.isDirectory()) fileDialog.setFilterPath(currentFile.getPath());
+                                else {
+                                    if (currentFile.getParent()) fileDialog.setFilterPath(currentFile.getParent());
+                                    fileDialog.setFileName(currentFile.getName());
+                                }
+                            }
+                            selectedPath = fileDialog.open();
+                        }
+                        if (selectedPath !== null) fileInput.setText(String(selectedPath));
+                    });
+
+                    propertyDefinition.inputWidget = fileInput;
+                    propertyDefinition.widget = fileContainer;
+                    if (verify && verify instanceof Function) {
+                        fileInput.addListener(SWT.Modify, e => {
+                            let verification = verify(fileInput.getText());
+                            propertyDefinition.verification = verification;
+                            if (!verification)
+                                fileInput.setForeground(new Color(255, 0, 0));
+                            else
+                                fileInput.setForeground(new Color(0, 0, 0));
+                            if (dialogObject.type == "pages") {
+                                let wizardDialog = dialogObject.dialog;
+                                let currentPage = wizardDialog.getCurrentPage();
+                                currentPage.getWizard().getContainer().updateButtons();
+                            }
+                            return;
                         })
                     }
                     break;
@@ -1291,7 +1369,8 @@ function createDialog(rootLayout,
             };
             // If the property is required, assign an event handler to update buttons on the wizard dialog (enable/disable next/finish buttons)
             if (required && required.includes(property)) {
-                propertyDefinition.widget.addListener(SWT.Modify, e => {
+                let requiredWidget = propertyDefinition.inputWidget || propertyDefinition.widget;
+                if (requiredWidget && typeof requiredWidget.addListener === "function") requiredWidget.addListener(SWT.Modify, e => {
                     if (dialogObject.type == "pages") {
                         let wizardDialog = dialogObject.dialog;
                         let currentPage = wizardDialog.getCurrentPage();
