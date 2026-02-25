@@ -41,6 +41,7 @@ function createExportContext() {
     imagesDirectory: null,
     indexFilePath: '',
     baseHref: './',
+    sharepointUrl: '',
     topBannerMessage: '',
 
     // Aggregation state
@@ -157,7 +158,9 @@ function prepareExportDestination(context, selectedProfile) {
   context.minifyHtmlOutputEnabled = selectedProfile.minifyHtmlOutput !== false;
   context.topBannerMessage = String(selectedProfile.bannerMessage || '');
   var normalizedBaseHref = normalizeBaseHref(selectedProfile.baseHref);
+  var normalizedSharepointUrl = String(selectedProfile.sharepointUrl || '').trim();
   context.baseHref = normalizedBaseHref;
+  context.sharepointUrl = normalizedSharepointUrl;
 
   var resolvedExportDirPath = resolveExportDirectoryPath(context, selectedProfile.directory);
   var exportDirectory = new File(resolvedExportDirPath).getAbsoluteFile();
@@ -175,6 +178,7 @@ function prepareExportDestination(context, selectedProfile) {
 
   context.profileStore.profiles[context.profileStore.activeProfile].directory = exportDirectory.getPath();
   context.profileStore.profiles[context.profileStore.activeProfile].baseHref = normalizedBaseHref;
+  context.profileStore.profiles[context.profileStore.activeProfile].sharepointUrl = normalizedSharepointUrl;
   context.profileStore.profiles[context.profileStore.activeProfile].bannerMessage = context.topBannerMessage;
 
   context.indexFilePath = new File(exportDirectory, 'index.html').getPath();

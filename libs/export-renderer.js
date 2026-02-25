@@ -133,7 +133,7 @@ function writeHtmlReport(context) {
     icon: context.minifyHtmlOutputEnabled ? minifyCssText(context.styles.icon) : context.styles.icon,
     picnic: context.minifyHtmlOutputEnabled ? minifyCssText(context.styles.picnic) : context.styles.picnic,
     baseHref: _.escape(context.baseHref),
-    topSnackbar: renderTopSnackbar(context.topBannerMessage, context.baseHref),
+    topSnackbar: renderTopSnackbar(context.topBannerMessage, context.sharepointUrl),
     modelTitle: _.escape(context.modelName),
     visibilityRulesBold: context.visibilityRulesBoldParts.join(''),
     visibilityRulesReveal: context.visibilityRulesRevealParts.join(''),

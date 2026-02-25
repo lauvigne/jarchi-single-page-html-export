@@ -157,6 +157,7 @@ function getDefaultExportProfile(defaultExportDirPath) {
   return {
     directory: String(defaultExportDirPath || ''),
     baseHref: './',
+    sharepointUrl: '',
     bannerMessage: '',
     markdownEnabled: true,
     minifyHtmlOutput: true
@@ -193,6 +194,7 @@ function normalizeProfile(profile, defaultProfile) {
   return {
     directory: String(source.directory || defaultProfile.directory || ''),
     baseHref: normalizeBaseHref(source.baseHref || defaultProfile.baseHref),
+    sharepointUrl: String(source.sharepointUrl || defaultProfile.sharepointUrl || '').trim(),
     bannerMessage: String(source.bannerMessage || defaultProfile.bannerMessage || ''),
     markdownEnabled: normalizeBoolean(source.markdownEnabled, defaultProfile.markdownEnabled),
     minifyHtmlOutput: normalizeBoolean(source.minifyHtmlOutput, defaultProfile.minifyHtmlOutput)
@@ -309,6 +311,7 @@ function promptExportConfigurationDialog(modelName, profileStore) {
 
     setText('directory', profile.directory);
     setText('baseHref', normalizeBaseHref(profile.baseHref));
+    setText('sharepointUrl', profile.sharepointUrl || '');
     setText('bannerMessage', profile.bannerMessage || '');
     setChecked('markdownEnabled', profile.markdownEnabled !== false);
     setChecked('minifyHtmlOutput', profile.minifyHtmlOutput !== false);
@@ -346,6 +349,12 @@ function promptExportConfigurationDialog(modelName, profileStore) {
           type: 'text',
           label: 'Base href',
           value: normalizeBaseHref(activeProfile.baseHref),
+          fill: true
+        },
+        sharepointUrl: {
+          type: 'text',
+          label: 'SharePoint URL',
+          value: String(activeProfile.sharepointUrl || ''),
           fill: true
         },
         bannerMessage: {
