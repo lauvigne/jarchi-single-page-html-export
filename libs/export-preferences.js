@@ -191,11 +191,20 @@ function normalizeBaseHref(value) {
 
 function normalizeProfile(profile, defaultProfile) {
   var source = profile || {};
+  function hasOwn(name) {
+    return Object.prototype.hasOwnProperty.call(source, name);
+  }
+  var sharepointValue = hasOwn('sharepointUrl')
+    ? source.sharepointUrl
+    : defaultProfile.sharepointUrl;
+  var bannerValue = hasOwn('bannerMessage')
+    ? source.bannerMessage
+    : defaultProfile.bannerMessage;
   return {
     directory: String(source.directory || defaultProfile.directory || ''),
     baseHref: normalizeBaseHref(source.baseHref || defaultProfile.baseHref),
-    sharepointUrl: String(source.sharepointUrl || defaultProfile.sharepointUrl || '').trim(),
-    bannerMessage: String(source.bannerMessage || defaultProfile.bannerMessage || ''),
+    sharepointUrl: String(sharepointValue || '').trim(),
+    bannerMessage: String(bannerValue || ''),
     markdownEnabled: normalizeBoolean(source.markdownEnabled, defaultProfile.markdownEnabled),
     minifyHtmlOutput: normalizeBoolean(source.minifyHtmlOutput, defaultProfile.minifyHtmlOutput)
   };
