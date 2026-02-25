@@ -56,7 +56,8 @@ function buildViewInteraction(view, viewImageSize, hotspotZoomFactor) {
   var orderedEntries = collectOrderedViewEntries(view, hotspotZoomFactor);
   if(!orderedEntries.length) return emptyViewInteraction();
 
-  var normalization = normalizeEntriesForRenderedImage(orderedEntries, viewImageSize);
+  var imageBoundsEntries = collectImageBoundsEntries(view, hotspotZoomFactor);
+  var normalization = normalizeEntriesForRenderedImage(orderedEntries, imageBoundsEntries, viewImageSize);
   if(!normalization || !normalization.entries.length || !normalization.extents) {
     return emptyViewInteraction();
   }
@@ -88,11 +89,24 @@ function collectOrderedViewEntries(view, zoom) {
   return orderedEntries;
 }
 
-function normalizeEntriesForRenderedImage(orderedEntries, viewImageSize) {
-  var diagramBounds = calculateIntBounds(orderedEntries);
-  if(!diagramBounds) return null;
+function collectImageBoundsEntries(view, zoom) {
+  var boundsEntries = [];
+  var roots = [];
+  $(view).children().filter(o => hasDiagramBounds(o)).each(function(e) {
+    roots.push(e);
+  });
+  for(var i = roots.length - 1; i >= 0; i--) {
+    collectBoundsRecursive(roots[i], 0, 0, zoom, boundsEntries);
+  }
+  return boundsEntries;
+}
 
-  var rootOffsets = computeRootOffsets(diagramBounds, viewImageSize);
+function normalizeEntriesForRenderedImage(orderedEntries, imageBoundsEntries, viewImageSize) {
+  var imageBounds = calculateIntBounds(imageBoundsEntries);
+  if(!imageBounds) imageBounds = calculateIntBounds(orderedEntries);
+  if(!imageBounds) return null;
+
+  var rootOffsets = computeRootOffsets(imageBounds, viewImageSize);
   var normalizedEntries = [];
   getHotspotGeometryUnderscore().each(orderedEntries, function(entry) {
     var normalized = toNormalizedEntry(entry, rootOffsets.rootOffsetX, rootOffsets.rootOffsetY);
@@ -223,6 +237,45 @@ function renderHotspots(hotspotEntries) {
   return parts.join('');
 }
 
+function collectBoundsRecursive(diagramElement, offsetX, offsetY, zoom, entries) {
+  if(!diagramElement || !diagramElement.bounds) return;
+
+  var localX = toNumber(diagramElement.bounds.x);
+  var localY = toNumber(diagramElement.bounds.y);
+  var localW = toNumber(diagramElement.bounds.width);
+  var localH = toNumber(diagramElement.bounds.height);
+  if(localX === null || localY === null || localW === null || localH === null) return;
+  if(localW <= 0 || localH <= 0) return;
+
+  var x = toInt(localX * zoom) + offsetX;
+  var y = toInt(localY * zoom) + offsetY;
+  var w = toInt(localW * zoom);
+  var h = toInt(localH * zoom);
+  if(w <= 0 || h <= 0) return;
+
+  entries.push({
+    x1: x,
+    y1: y,
+    x2: x + w,
+    y2: y + h
+  });
+
+  var children = [];
+  $(diagramElement).children().filter(o => hasDiagramBounds(o)).each(function(child) {
+    children.push(child);
+  });
+  for(var i = children.length - 1; i >= 0; i--) {
+    var child = children[i];
+    var childOffsetX = x;
+    var childOffsetY = y;
+    if(!isChildBoundsRelativeToParent(child, localW, localH)) {
+      childOffsetX = 0;
+      childOffsetY = 0;
+    }
+    collectBoundsRecursive(child, childOffsetX, childOffsetY, zoom, entries);
+  }
+}
+
 function collectEntriesRecursive(diagramElement, offsetX, offsetY, zoom, entries, currentViewId) {
   if(!diagramElement || !diagramElement.bounds) return;
 
@@ -268,6 +321,14 @@ function isDiagramNodeHotspotCandidate(diagramElement) {
   if(!diagramElement || !diagramElement.type) return false;
   if(isViewReferenceType(diagramElement.type)) return true;
   return !isRelationshipDiagramType(diagramElement.type);
+}
+
+function hasDiagramBounds(diagramElement) {
+  if(!diagramElement || !diagramElement.bounds) return false;
+  var w = toNumber(diagramElement.bounds.width);
+  var h = toNumber(diagramElement.bounds.height);
+  if(w === null || h === null) return false;
+  return w > 0 && h > 0;
 }
 
 function isRelationshipDiagramType(type) {
