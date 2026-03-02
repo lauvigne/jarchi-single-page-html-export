@@ -336,56 +336,6 @@ Copyright (c) 2020 Phillip Beauvoir & Jean-Baptiste Sarrodie - MIT License
           box-sizing: border-box;
           z-index: 3;
         }
-        body.export-debug .view-hotspot {
-          outline: 1px solid rgba(255, 64, 64, 0.85);
-          background: rgba(255, 64, 64, 0.1);
-        }
-        body.export-debug .view-hotspot::after {
-          content: attr(data-name);
-          position: absolute;
-          left: 0;
-          top: 0;
-          transform: translateY(-100%);
-          max-width: 280px;
-          padding: 1px 4px;
-          background: rgba(255, 64, 64, 0.95);
-          color: #fff;
-          font-size: 10px;
-          font-weight: 700;
-          line-height: 1.2;
-          white-space: nowrap;
-          overflow: hidden;
-          text-overflow: ellipsis;
-          pointer-events: none;
-        }
-        .view-debug-bounds {
-          position: absolute;
-          box-sizing: border-box;
-          pointer-events: none;
-          z-index: 4;
-          border: 2px dashed rgba(0, 110, 255, 0.95);
-          background: rgba(0, 110, 255, 0.08);
-          display: none;
-        }
-        .view-debug-node {
-          position: absolute;
-          box-sizing: border-box;
-          pointer-events: none;
-          display: none;
-          z-index: 3;
-          border: 1px solid rgba(46, 204, 113, 0.9);
-          background: rgba(46, 204, 113, 0.06);
-        }
-        .view-debug-node-abs {
-          border-color: rgba(243, 156, 18, 0.95);
-          background: rgba(243, 156, 18, 0.12);
-        }
-        body.export-debug .view-debug-bounds {
-          display: block;
-        }
-        body.export-debug .view-debug-node {
-          display: block;
-        }
         .view-element-selector {
           position: fixed;
           top: {{headerHeight}};
@@ -563,7 +513,7 @@ Copyright (c) 2020 Phillip Beauvoir & Jean-Baptiste Sarrodie - MIT License
 			}
 	  </style>
   </head>
-			<body class="{{debugBodyClass}}">
+			<body>
       {{topSnackbar}}
 			<!--
 			  All inputs must be defined at root level because visibility relies on `input ~ *` selectors.

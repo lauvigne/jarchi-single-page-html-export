@@ -28,7 +28,6 @@ function createExportContext() {
     markdownEnabled: true,
     minifyHtmlOutputEnabled: true,
     hotspotZoomFactor: getHotspotZoomFactorFromArchiPreference(),
-    hotspotDebugEnabled: true,
 
     folders: selectVisibleFolders(),
 
@@ -129,8 +128,7 @@ function initializeHotspotRuntime(context) {
     getViewDomId: function(rawViewId) { return getViewDomId(context, rawViewId); },
     getElementSelectorDomId: function(rawConceptId) { return getElementSelectorDomId(context, rawConceptId); },
     getDiagramNodeHotspotTarget: getDiagramNodeHotspotTarget,
-    isViewReferenceDiagramType: isViewReferenceDiagramType,
-    hotspotDebugEnabled: context.hotspotDebugEnabled === true
+    isViewReferenceDiagramType: isViewReferenceDiagramType
   });
 }
 

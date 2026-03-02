@@ -160,8 +160,7 @@ function writeHtmlReport(context) {
     mainHeaderMargin: '35px',
     mainHeaderBgColor: '#eceff1',
     mainHeaderColor: '#546e7a',
-    treeMargin: '1.3em',
-    debugBodyClass: context.hotspotDebugEnabled ? 'export-debug' : ''
+    treeMargin: '1.3em'
   });
 
   if(context.minifyHtmlOutputEnabled) {
