@@ -5,6 +5,7 @@
       <img class="diagram-image" src="{{viewImagePath}}" loading="lazy" decoding="async" fetchpriority="low">
       <div class="view-diagram-overlay">
         {{viewHotspots}}
+        {{viewPanels}}
       </div>
     </div>
   </div>

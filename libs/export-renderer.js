@@ -110,6 +110,7 @@ function renderViewComponent(context, viewModel) {
       viewName: viewModel.viewName,
       viewImagePath: viewModel.viewImagePath,
       viewHotspots: viewInteraction.hotspots,
+      viewPanels: viewInteraction.panels,
       documentationContent: viewModel.documentationContent
     })
   };
@@ -159,7 +160,8 @@ function writeHtmlReport(context) {
     mainHeaderMargin: '35px',
     mainHeaderBgColor: '#eceff1',
     mainHeaderColor: '#546e7a',
-    treeMargin: '1.3em'
+    treeMargin: '1.3em',
+    debugBodyClass: context.hotspotDebugEnabled ? 'export-debug' : ''
   });
 
   if(context.minifyHtmlOutputEnabled) {
