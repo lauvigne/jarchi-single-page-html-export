@@ -1,0 +1,1 @@
+<label for="{{id}}" style="left:{{left}}%;top:{{top}}%;width:{{width}}%;height:{{height}}%;"></label>

@@ -10,8 +10,9 @@ Copyright (c) 2020 Phillip Beauvoir & Jean-Baptiste Sarrodie - MIT License
 <html lang="en">
   <head>
     <meta charset="utf-8">
-	<meta http-equiv="X-UA-Compatible" content="IE=edge" />
+		<meta http-equiv="X-UA-Compatible" content="IE=edge" />
     <title>{{modelTitle}}</title>
+    <base href="{{baseURL}}">
 
 <!--
     <link rel="stylesheet" href="../resources/roboto.css">
@@ -141,12 +142,6 @@ Copyright (c) 2020 Phillip Beauvoir & Jean-Baptiste Sarrodie - MIT License
 /* Navigation Behavior */
 		  /* hide some elements by default */
 		  .hidden
-		  /* which report mode? */
-		  , #views:not(:checked) ~ * .views
-		  , #queries:not(:checked) ~ * .queries
-		  , #dataviz:not(:checked) ~ * .dataviz
-		  /* do we run in sharepoint/onedrive preview? */
-		  , #javascript:not(:checked) ~ * .js-only
 		  /* is mardown enabled? */
 		  , #markdown:checked ~ * .txt
 		  , #markdown:not(:checked) ~ * .md {
@@ -179,31 +174,11 @@ Copyright (c) 2020 Phillip Beauvoir & Jean-Baptiste Sarrodie - MIT License
 				   we remove it from right margin */
 		  	right: calc({{mainMargin}} - 10px);
 		  }
-		  .sidebar nav.secondary {
+		  .sidebar nav.primary {
 		  	height: calc(100% - {{headerHeight}} - {{sidebarFooterHeight}});
 		  	overflow: auto;					/* we want scrollbar in main sidebar navs */
 		  	padding: 0 {{sidebarMargin}};
 		  	margin-top: {{headerHeight}};
-		  }
-			.sidebar nav.primary {
-				position: fixed;				/* our footer is fixed on the bottom */
-				bottom: 0;
-				height: {{sidebarFooterHeight}};
-				width: {{sidebarWidth}};
-				text-align: center;
-				background: #00000033;	/* use transparency for darker background */
-				display: flex;					/* this is the trick to middle align buttons and title */
-			}
-			.sidebar nav.primary > * {
-			  display: inline-block;	/* block (to set height/width) and inline (no newline on <h>) */
-				margin-top: auto;				/* magic happens... */	
-				margin-bottom: auto;		/* ...here */
-				color: #aaaaaa;					/* default icon color is graker */
-			}
-			#views:checked ~ * nav.primary > label[for=views]
-		  , #queries:checked ~ * nav.primary > label[for=queries]
-		  , #dataviz:checked ~ * nav.primary > label[for=dataviz] {
-		  	color: {{sidebarColor}};
 		  }
 			.sidebar ::-webkit-scrollbar {
 				width: 10px;						/* thin but not too much */
@@ -274,22 +249,12 @@ Copyright (c) 2020 Phillip Beauvoir & Jean-Baptiste Sarrodie - MIT License
 		  }
 
 /* Main Content */
-		  article header {
-				margin: 0 calc(-1 * {{mainMargin}});
-				padding: {{mainHeaderMargin}} {{mainMargin}};
-				background-color: {{mainHeaderBgColor}};
-				color: {{mainHeaderColor}};
+		  article > h2:first-of-type {
+		    margin: 0 calc(-1 * 20px);
+				padding: 25px 20px;
+				background-color: #eceff1;
+				color: #546e7a;
 		  }
-		  article header * {
-		  	/* hide/reveal rules use display:table-row which suppress margins and padding.
-		  	   simulating this on other headers to get a similar rendering */
-		  	margin: 0;
-		  	padding: 0;
-		  }
-		  .views img {
-				max-width: 100%;
-				margin-top: {{mainMargin}};	/* only set top margin because bottom is set by tabs */
-			}
 
 /* Tree */
 		  div.tree {
@@ -346,33 +311,66 @@ Copyright (c) 2020 Phillip Beauvoir & Jean-Baptiste Sarrodie - MIT License
 				color: {{headerBgColor}};	/* use the main accent color */
 			}
 
-/* Generated hidden/reveal rules */
-			#id-1:checked ~ * label[for=id-1]
-			{{visibilityRulesBold}} {
-				font-weight: 700;				/* selected view label is bold in tree */
+/* Hard-coded hidden/reveal rules */
+      #views > article {
+      	display: none;
+      }
+      #views > article:has(input[name="views"]:checked) {
+			  display: block;
 			}
-			#id-model:checked ~ * .id-model
-			{{visibilityRulesReveal}} {
-				display: table-row;			/* has to be table-row because we use it to reveal rows */
+
+/* View Hotspot */
+ 			.img-container {
+        position: relative;
+        display: inline-block;
+        max-width: 100%;
+        margin-top: {{mainMargin}};
+      }
+      .img-container img {
+        display: block;
+        max-width: 100%;
+        height: auto;
+        margin-top: 0;
+      }
+      .img-overlay {
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+        z-index: 2;
+      }
+      .img-overlay label{
+        position: absolute;
+        display: block;
+        pointer-events: auto;
+        cursor: pointer;
+        border: 0; /* 2px dashed #ff0000; */
+        background: transparent;
+        box-sizing: border-box;
+        z-index: 3;
+      }
+
+/* Views' documentation style */
+			#views > article > div.txt
+			, #views > article > div.md {
+				border-left: 2px solid #0074D9;
+    		padding-left: 20px;
 			}
+			#views > article > div.txt:before
+			, #views > article > div.md:before {
+			  content: "DOCUMENTATION";
+    		color: #666666;
+    		margin-top: 40px;
+    		display: block;
+			}
+
 	  </style>
   </head>
 	<body>
 		<!-- All inputs must be at the begining of the page (CSS rules uses 'input ~ *' selector) -->
-		<!-- Radio inputs used to select the current 'mode' (View Visualizer, Query Tool, DataVisualization) -->
-	  <input id='views'   class="hidden" type='radio' name='nav' checked>
-	  <input id='queries' class="hidden" type='radio' name='nav'>
-	  <input id='dataviz' class="hidden" type='radio' name='nav'>
 		<!-- Checkbox used to show/hide the sidebar -->
 		<input id="sidebar" class="hidden" type="checkbox" checked>
-		<!-- Checkbox checked only when JavaScript is enabled -->
-		<input id="javascript" class="hidden" type="checkbox">
 		<!-- Checkbox used to enable/disable markdown rendering for documentation -->
 		<input id="markdown" class="hidden" type="checkbox" checked>
-
-		<!-- One checkbox per view -->
-		<input id='id-model' type='radio' name='views' checked>
-		{{inputCheckbox}}
 
 		<!-- Modal dialogs -->
 		<div class="modal">
@@ -404,38 +402,13 @@ Copyright (c) 2020 Phillip Beauvoir & Jean-Baptiste Sarrodie - MIT License
 		<!-- Report eally starts here with the sidebar -->
 		<aside class="sidebar">
 			<label for="sidebar" id="hide-sidebar" class="icon close"></label>
-			<nav class="secondary views">
+			<nav class="primary views">
 				<header class="top-header">
 					<h3>Content</h3>
 				</header>
 				<div class="tree">
 					{{treeContent}}
 				</div>
-			</nav>
-			<nav class="secondary queries">
-				<header class="top-header">
-					<h3>Query</h3>
-				</header>
-			</nav>
-			<nav class="secondary dataviz">
-				<header class="top-header">
-					<h3>Data Visualization</h3>
-				</header>
-			</nav>
-			<nav class="primary">
-				<span class="spacer"></span>
-				<label for='views' data-tooltip="Model Content" class="tooltip-top">
-					<i class="icon book"></i>
-				</label>
-				<span class="spacer"></span>
-				<label for='queries' data-tooltip="Query Model" class="js-only tooltip-top">
-					<i class="icon table"></i>
-				</label>
-				<span class="js-only spacer"></span>
-				<label for='dataviz' data-tooltip="Reports" class="js-only tooltip-top">
-					<i class="icon chart"></i>
-				</label>
-				<span class="js-only spacer"></span>
 			</nav>
 		</aside>
 
@@ -449,75 +422,31 @@ Copyright (c) 2020 Phillip Beauvoir & Jean-Baptiste Sarrodie - MIT License
 		</header>
 
 		<main class="expandable">
-			<article class="views">
-				<header>
-					<h2 class="hidden id-model">{{modelTitle}}</h2>
-					{{viewTitles}}
-				</header>
-
-				<img class="hidden id-model"/>
-				{{viewDiagrams}}
-
-				<div class="tabs three">
-					<input id='view-documentation' type='radio' name='view-detail' checked />
-					<label for="view-documentation" class="pointer">Documentation</label>
-					<input id='view-elements' type='radio' name='view-detail'>
-					<label for="view-elements" class="pointer">Elements</label>
-					<input id='view-relationships' type='radio' name='view-detail'>
-					<label for="view-relationships" class="pointer">Relationships</label>
-					<div class="row">
-						<div>
-							<div class="hidden id-model">
-								<div class="txt">{{modelPurposeText}}</div>
-								<div class="md">{{modelPurposeMarkdown}}</div>
-							</div>
-							{{viewDocumentations}}
-						</div>
-
-						<div>
-							<table class="full fixed">
-								<thead>
-									<tr>
-										<th class="fourth">Name
-										<th class="fourth">Type
-										<th class="half">Documentation
-								<tbody>
-									{{elements}}
-							</table>
-						</div>
-
-						<div>
-							<table class="full fixed">
-								<thead><tr>
-									<th class="sixth">Name
-									<th class="sixth">Type
-									<th class="sixth">Source
-									<th class="sixth">Target
-									<th class="third">Documentation
-								<tbody>
-									{{relationships}}
-							</table>
-						</div>
-					</div>
-				</div>
-			</article>
-			<article class="queries">
-				<header>
-					<h2>Queries</h2>
-				</header>
-			</article>
-			<article class="dataviz">
-				<header>
-					<h2>Data Visualization</h2>
-				</header>
-			</article>
+			<section id="views">
+				<article>
+				 <input id='id-model' type='radio' name='views' checked>
+				 <h2>{{modelTitle}}</h2>
+				 <div class="txt">{{modelPurposeText}}</div>
+				 <div class="md">{{modelPurposeMarkdown}}</div>
+				</article>
+				{{views}}
+			</section>
+			<!--
+			<aside id='elements'>
+				// Elements can be added below, one article per element
+				// CSS must be updated accordingly (similar to views' CSS)
+				<article class='element'>
+					<input id='[[elementId]]' type='radio' name='elements'>
+				  <h2>[[elementName]]</h2>
+				  <details>
+				    <div class="txt">[[documentationText]]</div>
+				    <div class="md">[[documentationMarkdown]]</div>
+				  </details>
+				  // Properties table
+				</article>
+			</aside>
+			-->
 		</main>
-
-		<script>
-			// If javascript is enabled (ie. this report is NOT opened from
-			// within SharePoint or OneDrive), let's check 'javascript' input
-			document.getElementById("javascript").checked = true;
-		</script>
 	</body>
 </html>
 
