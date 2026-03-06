@@ -14,37 +14,12 @@ Copyright (c) 2020 Phillip Beauvoir & Jean-Baptiste Sarrodie - MIT License
     <title>{{modelTitle}}</title>
     <base href="{{baseURL}}">
 
-<!--
-    <link rel="stylesheet" href="../resources/roboto.css">
-    <link rel="stylesheet" href="../resources/icon.css">
-    <link rel="stylesheet" href="../resources/picnic-custom.css">
--->
 		<style>
 			{{roboto}}
 			{{icon}}
 			{{picnic}}
 		</style>
 	  <style>
-/* Application wide configuration */
-			/* Unfortunately IE11 doesn't support CSS vars, so values will be forced through templating system
-			   When supporting IE11 will be out of scope, it will be possible to revert to CSS vars
-	  	:root {
-	  		--sidebar-bg-color: #37474f;
-	  		--sidebar-color: #DDDDDD;
-	  		--sidebar-width: 350px;
-	  		--sidebar-margin: 10px;
-	  		--sidebar-footer-height: 0px;
-	  		--header-height: 60px;
-	  		--header-bg-color: #0074D9;
-	  		--header-color: #fff;
-	  		--main-bg-color: #fff;
-	  		--main-color: #000;
-	  		--main-margin: 20px;
-	  		--main-header-margin: 35px;
-	  		--main-header-bg-color: #eceff1;
-	  		--main-header-color: #546e7a;
-	  	}
-			*/
 
 /* Generic style */
 		  body {
@@ -75,17 +50,17 @@ Copyright (c) 2020 Phillip Beauvoir & Jean-Baptiste Sarrodie - MIT License
 			}
 
 /* Icons */
-		  .icon {
-		  	font-family: 'Icon';		/* 'Icon' font is based on a FontAwesome subset */
-  			font-size: 27px;				/* main size of the icon, can be overriden */
+			.icon {
+				font-family: 'Icon';		/* 'Icon' font is based on a FontAwesome subset */
+				font-size: 20px;				/* main size of the icon, can be overriden */
 				height: 1.7em; 					/* make it square */
 				width: 1.7em; 					/* make it square */
 				font-style: normal; 		/* needed if <i> tags are used */
 				text-align: center; 		/* icon is centered */
 				line-height: 1.7; 			/* line height might have to be fine-tuned */
 				display: inline-block; 	/* we want icons as blocks, but inline */
-		  }
-  		.icon:hover {
+			}
+			.icon:hover {
 				background: #ffffff3d;	/* light background on hover */
 				border-radius: 50%;			/* round background */
 			}
@@ -209,6 +184,10 @@ Copyright (c) 2020 Phillip Beauvoir & Jean-Baptiste Sarrodie - MIT License
 				margin-top: auto;				/* magic happens... */	
 				margin-bottom: auto;		/* ...here */
 			}
+      #main-header > a {
+        color: inherit;
+        text-decoration: none;
+      }
 			#show-sidebar {
 				/* visual space inside icon (~10px) should be taken into account so
 				   we remove it from left margin and we set a negative right margin */
@@ -271,11 +250,15 @@ Copyright (c) 2020 Phillip Beauvoir & Jean-Baptiste Sarrodie - MIT License
 			div.tree div {
 				padding-left: {{treeMargin}};
 			}
-			div.tree label {
+			div.tree label,
+			div.tree a {
 				display: block;					/* folders and views' name should start on a new line */
 				margin-bottom: 0.3em;		/* add space between labels */
+        color: inherit;
+        text-decoration: none;
 			}
-			div.tree label::before {
+			div.tree label::before,
+			div.tree a::before {
 				font-family: 'Icon';		/* let's add some space on left for an icon */
 				font-weight: normal;		/* should not be impacted by bold (selected) label */
 				display: inline-block;	/* needed to set its width */
@@ -289,7 +272,8 @@ Copyright (c) 2020 Phillip Beauvoir & Jean-Baptiste Sarrodie - MIT License
 			div.tree input:checked + label.folder::before {
 				content: "\f07c"; 			/* folder-open */
 			}
-			div.tree label.view::before {
+			div.tree label.view::before,
+			div.tree a.view::before {
 				content: "\f1e1";				/* share-alt-square (that's the best I found to suggest a view) */
 				color: #65a8e3;					/* blue taken from original Archi view icon */
 			}
@@ -313,41 +297,106 @@ Copyright (c) 2020 Phillip Beauvoir & Jean-Baptiste Sarrodie - MIT License
 
 /* Hard-coded hidden/reveal rules */
       #views > article {
-      	display: none;
+        display: none;
       }
-      #views > article:has(input[name="views"]:checked) {
-			  display: block;
-			}
+      #views > article#id-model {
+        display: block;
+      }
+      #views > article:target {
+        display: block;
+      }
+      #views:has(article:target) > article#id-model {
+        display: none;
+      }
 
 /* View Hotspot */
- 			.img-container {
+      .img-container {
         position: relative;
-        display: inline-block;
+        display: block;
         max-width: 100%;
         margin-top: {{mainMargin}};
       }
-      .img-container img {
+      .img-container img,
+      .img-container object.view-svg,
+      .img-container svg {
         display: block;
         max-width: 100%;
         height: auto;
         margin-top: 0;
       }
-      .img-overlay {
+      .view-object-dialog {
+        display: none;
+        position: fixed;
+        inset: 0;
+        z-index: 70;
+      }
+      .view-dialog-proxy {
+        display: none;
+      }
+      .view-object-dialog-overlay {
         position: absolute;
         inset: 0;
-        pointer-events: none;
-        z-index: 2;
+        background: rgba(0, 0, 0, 0.35);
       }
-      .img-overlay label{
+      .view-object-dialog-content {
         position: absolute;
-        display: block;
-        pointer-events: auto;
-        cursor: pointer;
-        border: 0; /* 2px dashed #ff0000; */
-        background: transparent;
-        box-sizing: border-box;
-        z-index: 3;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: min(560px, calc(100vw - 32px));
+        max-height: calc(100vh - 32px);
+        overflow: auto;
+        background: #fff;
+        border: 1px solid #d9e0e6;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.18);
+        padding: 14px 16px 16px 16px;
       }
+      .view-object-dialog-content > header {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+      .view-object-dialog-content > header h3 {
+        margin: 0;
+        flex: 1;
+      }
+      .view-object-dialog-content > header .close {
+        text-decoration: none;
+        font-size: 22px;
+        line-height: 1;
+        color: #546e7a;
+      }
+      .view-object-dialog-content > header .close:hover {
+        color: #263238;
+      }
+      .view-object-type {
+        margin: 8px 0 14px 0;
+        color: #607d8b;
+      }
+      .view-object-dialog-content h4 {
+        margin: 16px 0 8px 0;
+        color: #455a64;
+      }
+      .view-object-properties {
+        width: 100%;
+        border-collapse: collapse;
+        table-layout: fixed;
+        font-size: 0.92em;
+      }
+      .view-object-properties th,
+      .view-object-properties td {
+        border: 1px solid #dde3e8;
+        padding: 6px 8px;
+        vertical-align: top;
+        word-break: break-word;
+      }
+      .view-object-properties th {
+        width: 36%;
+        background: #f7f9fb;
+        text-align: left;
+      }
+      {{dialogProxyViewRules}}
+      {{dialogProxyDialogRules}}
 
 /* Views' documentation style */
 			#views > article > div.txt
@@ -397,9 +446,10 @@ Copyright (c) 2020 Phillip Beauvoir & Jean-Baptiste Sarrodie - MIT License
 				  </label>
 				</footer>
 			</div>
-		</div>
+			</div>
+      {{dialogProxies}}
 
-		<!-- Report eally starts here with the sidebar -->
+			<!-- Report eally starts here with the sidebar -->
 		<aside class="sidebar">
 			<label for="sidebar" id="hide-sidebar" class="icon close"></label>
 			<nav class="primary views">
@@ -412,20 +462,19 @@ Copyright (c) 2020 Phillip Beauvoir & Jean-Baptiste Sarrodie - MIT License
 			</nav>
 		</aside>
 
-		<header id="main-header" class="top-header expandable">
-			<label for="sidebar" id="show-sidebar" class="icon menu"></label>
-			<label for="id-model">
-				<h3 class="title">{{modelTitle}}</h3>
-			</label>
-			<span class="spacer"></span>
-			<label for="preferences" id="show-preferences" class="icon gear"></label>
-		</header>
+			<header id="main-header" class="top-header expandable">
+				<label for="sidebar" id="show-sidebar" class="icon menu"></label>
+				<a href="#id-model">
+					<h3 class="title">{{modelTitle}}</h3>
+				</a>
+				<span class="spacer"></span>
+				<label for="preferences" id="show-preferences" class="icon gear"></label>
+			</header>
 
-		<main class="expandable">
+			<main class="expandable">
 			<section id="views">
-				<article>
-				 <input id='id-model' type='radio' name='views' checked>
-				 <h2>{{modelTitle}}</h2>
+				<article id="id-model">
+					 <h2>{{modelTitle}}</h2>
 				 <div class="txt">{{modelPurposeText}}</div>
 				 <div class="md">{{modelPurposeMarkdown}}</div>
 				</article>
@@ -446,13 +495,7 @@ Copyright (c) 2020 Phillip Beauvoir & Jean-Baptiste Sarrodie - MIT License
 				</article>
 			</aside>
 			-->
-		</main>
-	</body>
+			</main>
+      {{dialogs}}
+			</body>
 </html>
-
-
-
-
-
-
-

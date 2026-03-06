@@ -1,1 +1,1 @@
-<label for="{{viewId}}" class="view">{{viewName}}</label>
+<a href="#{{viewId}}" class="view">{{viewName}}</a>

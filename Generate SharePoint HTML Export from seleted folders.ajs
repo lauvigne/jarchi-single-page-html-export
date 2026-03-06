@@ -36,6 +36,10 @@
 load(__DIR__ + 'Libraries/polyfills/readfully.js');
 const _ = require(__DIR__ + 'Libraries/lodash/full.js');
 const marked = require(__DIR__ + 'Libraries/marked.js');
+load(__DIR__ + 'Libraries/view2svg/diagramAppearancePrefs.js');
+load(__DIR__ + 'Libraries/view2svg/archiFigureLibrary.js');
+load(__DIR__ + 'Libraries/view2svg/archiRelationshipLibrary.js');
+load(__DIR__ + 'Libraries/view2svg/viewToSvgSemantic.js');
 
 const BASE_URL = '';
 
@@ -63,12 +67,17 @@ var tplMainReport = _.template(readFully(__DIR__ + 'templates/main-report.html',
 var tplTreeView = _.template(readFully(__DIR__ + 'templates/model-tree-view.tpl', 'UTF-8'));
 var tplTreeFolder = _.template(readFully(__DIR__ + 'templates/model-tree-folder.tpl', 'UTF-8'));
 var tplView = _.template(readFully(__DIR__ + 'templates/view.tpl', 'UTF-8'));
-var tplViewHotspot = _.template(readFully(__DIR__ + 'templates/view-hotspot.tpl', 'UTF-8'));
+var tplViewObjectDialog = _.template(readFully(__DIR__ + 'templates/view-object-dialog.tpl', 'UTF-8'));
+var tplViewObjectPropertyRow = _.template(readFully(__DIR__ + 'templates/view-object-property-row.tpl', 'UTF-8'));
 
 var treeFolder = '';
 var treeContent = '';
 var views = '';
-var viewsIdsByConceptId = {};
+var dialogs = '';
+var dialogByConceptId = {};
+var dialogProxies = '';
+var dialogProxyViewRules = '';
+var dialogProxyDialogRules = '';
 
 var allFolders = $('folder');
 var viewsFolder = $(model).children().filter('folder.Views');
@@ -82,7 +91,8 @@ if(! folders.size()) {
   console.log("All views have been selected.");
 }
 
-var targetDirectory = window.promptOpenDirectory({ title: "Select target directory" });
+// var targetDirectory = window.promptOpenDirectory({ title: "Select target directory" });
+var targetDirectory = '/Users/lauvigne/Documents/Archi/scripts/jarchi-View2SingleHTML/dist/All-SVG';
 
 if(!targetDirectory) {
   console.log('User cancelled.');
@@ -90,6 +100,8 @@ if(!targetDirectory) {
 }
 
 var filePath = targetDirectory + "/index.html";
+var imagesDirectory = targetDirectory + "/images";
+ensureDirectoryExists(imagesDirectory);
 
 _(folders).sortBy('name').each(function(f) {
   exportViews(f);
@@ -111,18 +123,23 @@ function exportViews(folder) {
         // Generate report's fragments
         treeContent += tplTreeView({viewId: 'id-'+v.id, viewName: _.escape(v.name)});
         
-        // Get Views's bounding box
-        var viewBounds = getViewBounds(v);
+        var svgMarkup = viewToSvgSemantic.exportViewToSemanticSvg(v, {
+          fontFamily: 'Arial, sans-serif',
+          fontFaceFamily: 'ArchiCustom',
+          fontFaceUrl: ''
+        });
+        var viewInteraction = buildViewInteraction(v);
+        svgMarkup = injectSvgInteractionLayers(svgMarkup, viewInteraction);
+        $.fs.writeFile(imagesDirectory + "/" + v.id + ".svg", svgMarkup, 'UTF8');
+
         // Generate View's article tag
         views += tplView({
           viewId: 'id-'+v.id,
           viewName: _.escape(v.name),
-          viewImagePath: "images/" + v.id + ".png",
-          viewHotspots: exportViewHotspots(v, { x: -viewBounds.x, y: -viewBounds.y }, { width: viewBounds.width, height: viewBounds.height }),
+          viewImagePath: "images/" + v.id + ".svg",
           documentationText: _.escape(v.documentation).replace(/\n/g, '<br>'),
           documentationMarkdown: marked(_.escape(v.documentation), mdOptions)
         });
-        $.model.renderViewToFile(v, targetDirectory + "/images/" + v.id + ".png", "PNG", {scale: 1, margin: 0});
       }
     });
     treeContent = tplTreeFolder({folderId: 'id-'+folder.id, folderName: _.escape(folder.name), folderContent: treeContent});
@@ -130,75 +147,204 @@ function exportViews(folder) {
   }
 }
 
-function getViewBounds(view) {
-  const bpMargin = 10;
-  var startX = null;
-  var startY = null;
-  var endX = null;
-  var endY = null;
-  $(view).children().not('relationship').not('diagram-model-connection').not('canvas-model-connection').each(function(child) {
-    // Adjust view's bounds to visual elements
-    startX = startX === null ? child.bounds.x : Math.min(startX, child.bounds.x);
-    startY = startY === null ? child.bounds.y : Math.min(startY, child.bounds.y);
-    endX = endX === null ? child.bounds.x + child.bounds.width : Math.max(endX, child.bounds.x + child.bounds.width);
-    endY = endY === null ? child.bounds.y + child.bounds.height : Math.max(endY, child.bounds.y + child.bounds.height);
-  });
-  $(view).children('relationship').add($(view).children('diagram-model-connection')).add($(view).children('canvas-model-connection')).each(function(rel) {
-    // Adjust view's bounds to bendpoints
-    var bendpoints = rel.relativeBendpoints;
-    const bpLength = bendpoints.length;
-    if (bpLength) {
-      var srcCenter = getFigureCenter(rel.source);
-      var tgtCenter = getFigureCenter(rel.target);
-      for (let bpIdx = 1; bpIdx <= bpLength; bpIdx++) {
-        var bp = bendpoints[bpIdx-1];
-        var bpWeight = bpIdx / (bpLength+1);
-        var bpAbs = {
-          x: (srcCenter.x + bp.startX) * (1 - bpWeight) + (tgtCenter.x + bp.endX) * bpWeight,
-          y: (srcCenter.y + bp.startY) * (1 - bpWeight) + (tgtCenter.y + bp.endY) * bpWeight
-        }
-        startX = startX === null ? bpAbs.x - bpMargin : Math.min(startX, bpAbs.x - bpMargin);
-        startY = startY === null ? bpAbs.y - bpMargin : Math.min(startY, bpAbs.y - bpMargin);
-        endX = endX === null ? bpAbs.x + bpMargin : Math.max(endX, bpAbs.x + bpMargin);
-        endY = endY === null ? bpAbs.y + bpMargin : Math.max(endY, bpAbs.y + bpMargin);
+function buildViewInteraction(view) {
+  var state = {
+    viewId: view.id,
+    viewLinks: [],
+    detailLinks: [],
+    seenObjectIds: {}
+  };
+  collectViewInteraction(view, { x: 0, y: 0 }, state);
+  return state;
+}
+
+function injectSvgInteractionLayers(svgMarkup, interaction) {
+  var hasViewLinks = interaction.viewLinks.length > 0;
+  var hasDetailLinks = interaction.detailLinks.length > 0;
+  if (!hasViewLinks && !hasDetailLinks) {
+    return svgMarkup;
+  }
+  var relationshipPathById = extractRelationshipPathMap(svgMarkup);
+  var layers = '';
+  if (hasDetailLinks) {
+    layers += '\n<g id="layer-object-links">';
+    interaction.detailLinks.forEach(function(link) {
+      layers += '<a xlink:href="../index.html#' + link.targetId + '" href="../index.html#' + link.targetId + '" target="_top">';
+      if (link.isRelationship && relationshipPathById[link.sourceObjectId]) {
+        layers += '<path id="svg-detail-' + link.sourceObjectId + '" d="' + escapeXmlAttr(relationshipPathById[link.sourceObjectId]) + '" fill="none" stroke="transparent" stroke-width="14" stroke-linecap="round" stroke-linejoin="round" pointer-events="stroke"/>';
+      } else {
+        layers += '<rect id="svg-detail-' + link.sourceObjectId + '" x="' + link.x + '" y="' + link.y + '" width="' + link.width + '" height="' + link.height + '" fill="transparent" pointer-events="all"/>';
       }
+      layers += '</a>';
+    });
+    layers += '</g>\n';
+  }
+  if (hasViewLinks) {
+    layers += '\n<g id="layer-view-links">';
+    interaction.viewLinks.forEach(function(link) {
+      layers += '<a xlink:href="../index.html#id-' + link.targetViewId + '" href="../index.html#id-' + link.targetViewId + '" target="_top">';
+      layers += '<rect id="svg-link-' + link.sourceObjectId + '" x="' + link.x + '" y="' + link.y + '" width="' + link.width + '" height="' + link.height + '" fill="transparent" pointer-events="all"/>';
+      layers += '</a>';
+    });
+    layers += '</g>\n';
+  }
+  return svgMarkup.replace('</svg>', layers + '</svg>');
+}
+
+function collectViewInteraction(obj, offset, state) {
+  $(obj).children('diagram-model-reference').each(function(vRef) {
+    if (vRef && vRef.id && vRef.refView && vRef.refView.id) {
+      state.viewLinks.push({
+        sourceObjectId: String(vRef.id),
+        targetViewId: String(vRef.refView.id),
+        x: vRef.bounds.x + offset.x,
+        y: vRef.bounds.y + offset.y,
+        width: vRef.bounds.width,
+        height: vRef.bounds.height
+      });
     }
   });
-  return {
-    x: startX,
-    y: startY,
-    width: endX - startX,
-    height: endY - startY
-  };
-}
-
-function getFigureCenter(obj) {
-  var x = obj.bounds.x + obj.bounds.width / 2;
-  var y = obj.bounds.y + obj.bounds.height / 2;
-  obj = $(obj).parent().first();
-  while (!$(obj).is('view')) {
-    x += obj.bounds.x;
-    y += obj.bounds.y;
-    obj = $(obj).parent().first();
-  }
-  return {x: x, y: y};
-}
-
-function exportViewHotspots(obj, offset, dimension) {
-  viewHotspots = '';
-  $(obj).children('diagram-model-reference').each(function(vRef) {
-    viewHotspots += tplViewHotspot({
-      id: 'id-'+vRef.refView.id,
-      left: (100 * (vRef.bounds.x + offset.x) / dimension.width).toFixed(2),
-      top: (100 * (vRef.bounds.y + offset.y) / dimension.height).toFixed(2),
-      width: (100 * (vRef.bounds.width) / dimension.width).toFixed(2),
-      height: (100 * (vRef.bounds.height) / dimension.height).toFixed(2)
-    });
+  $(obj).children('relationship').add($(obj).children('diagram-model-connection')).add($(obj).children('canvas-model-connection')).each(function(rel) {
+    addObjectDialogForSelection(rel, offset, state, true);
+  });
+  $(obj).children().not('relationship').not('diagram-model-connection').not('canvas-model-connection').not('diagram-model-reference').each(function(child) {
+    addObjectDialogForSelection(child, offset, state, false);
   });
   $(obj).children().not('relationship').not('diagram-model-connection').not('canvas-model-connection').each(function(child) {
-    viewHotspots += exportViewHotspots(child, { x: offset.x + child.bounds.x, y: offset.y + child.bounds.y }, dimension);
+    collectViewInteraction(child, { x: offset.x + child.bounds.x, y: offset.y + child.bounds.y }, state);
   });
-  return viewHotspots;
+}
+
+function addObjectDialogForSelection(diagramObject, offset, state, isRelationship) {
+  if (!diagramObject || !diagramObject.id || !diagramObject.bounds || !diagramObject.concept) {
+    return;
+  }
+  var objectId = String(diagramObject.id);
+  if (state.seenObjectIds[objectId]) {
+    return;
+  }
+  state.seenObjectIds[objectId] = true;
+
+  var displayName = getDisplayName(diagramObject);
+  var displayType = getDisplayType(diagramObject);
+  var documentation = getDocumentation(diagramObject);
+  var propertiesRows = getPropertiesRows(diagramObject.concept);
+  var dialogId = ensureDialogForConcept(diagramObject.concept, state.viewId, displayName, displayType, documentation, propertiesRows);
+  var targetId = 'id-proxy-' + state.viewId + '-' + objectId;
+  addDialogProxy(targetId, 'id-' + state.viewId, dialogId);
+
+  state.detailLinks.push({
+    sourceObjectId: objectId,
+    targetId: targetId,
+    isRelationship: !!isRelationship,
+    x: diagramObject.bounds.x + offset.x,
+    y: diagramObject.bounds.y + offset.y,
+    width: diagramObject.bounds.width,
+    height: diagramObject.bounds.height
+  });
+}
+
+function ensureDialogForConcept(concept, viewId, displayName, displayType, documentation, propertiesRows) {
+  if (!concept || !concept.id) {
+    return 'id-' + viewId + '-obj-unknown';
+  }
+  var conceptId = String(concept.id);
+  if (dialogByConceptId[conceptId]) {
+    return dialogByConceptId[conceptId];
+  }
+  var dialogId = 'id-concept-' + conceptId;
+  dialogByConceptId[conceptId] = dialogId;
+  dialogs += tplViewObjectDialog({
+    dialogId: dialogId,
+    viewId: 'id-' + viewId,
+    objectName: _.escape(displayName),
+    objectType: _.escape(displayType),
+    documentationText: _.escape(documentation).replace(/\n/g, '<br>'),
+    documentationMarkdown: marked(_.escape(documentation), mdOptions),
+    propertiesRows: propertiesRows
+  });
+  return dialogId;
+}
+
+function addDialogProxy(targetId, viewId, dialogId) {
+  dialogProxies += '<span id="' + targetId + '" class="view-dialog-proxy"></span>';
+  dialogProxyViewRules += '#' + targetId + ':target ~ main #views > article#id-model{display:none;}';
+  dialogProxyViewRules += '#' + targetId + ':target ~ main #views > article#' + viewId + '{display:block;}';
+  dialogProxyDialogRules += '#' + targetId + ':target ~ #'+ dialogId + '{display:block;}';
+}
+
+function extractRelationshipPathMap(svgMarkup) {
+  var map = {};
+  if (!svgMarkup) {
+    return map;
+  }
+  var re = /<g class="archi-relationship" id="([^"]+)"[^>]*>\s*<path d="([^"]+)"/g;
+  var match = null;
+  while ((match = re.exec(svgMarkup)) !== null) {
+    map[match[1]] = match[2];
+  }
+  return map;
+}
+
+function escapeXmlAttr(value) {
+  return String(value)
+    .replace(/&/g, '&amp;')
+    .replace(/"/g, '&quot;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+}
+
+function getDisplayName(diagramObject) {
+  if (diagramObject.concept && diagramObject.concept.name) {
+    var conceptName = String(diagramObject.concept.name).trim();
+    if (conceptName) {
+      return conceptName;
+    }
+  }
+  if (diagramObject.name) {
+    var objectName = String(diagramObject.name).trim();
+    if (objectName) {
+      return objectName;
+    }
+  }
+  return '(Unnamed)';
+}
+
+function getDisplayType(diagramObject) {
+  if (diagramObject.concept && diagramObject.concept.type) {
+    return String(diagramObject.concept.type);
+  }
+  if (diagramObject.type) {
+    return String(diagramObject.type);
+  }
+  return 'Unknown';
+}
+
+function getDocumentation(diagramObject) {
+  if (diagramObject.documentation) {
+    return String(diagramObject.documentation);
+  }
+  return '';
+}
+
+function getPropertiesRows(concept) {
+  var rows = '';
+  var hasRows = false;
+
+  concept.prop().forEach(key => {
+    hasRows = true;
+    rows += tplViewObjectPropertyRow({
+      key,
+      value: _.escape(concept.prop(key)).replace(/\n/g, '<br>')
+    });
+  });
+  if (!hasRows) {
+    rows += tplViewObjectPropertyRow({
+      key: '-',
+      value: '(No properties)'
+    });
+  }
+  return rows;
 }
 
 var mainReport = tplMainReport({
@@ -209,6 +355,10 @@ var mainReport = tplMainReport({
   modelTitle: _.escape(model.name),
   treeContent: treeContent,
   views: views,
+  dialogs: dialogs,
+  dialogProxies: dialogProxies,
+  dialogProxyViewRules: dialogProxyViewRules,
+  dialogProxyDialogRules: dialogProxyDialogRules,
   modelPurposeText: _.escape(model.purpose).replace(/\n/g, '<br>'),
   modelPurposeMarkdown: marked(_.escape(model.purpose), mdOptions),
   sidebarBgColor: '#37474f',
@@ -232,11 +382,10 @@ $.fs.writeFile(filePath, mainReport, 'UTF-8');
 
 console.log('Export terminated.');
 
-function properCase(str) {
-  return str.replace(
-    /\w*/g,
-    function(txt) {
-      return txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase();
-    }
-  ).replace('-', ' ');
+function ensureDirectoryExists(path) {
+  var File = Java.type('java.io.File');
+  var dir = new File(path);
+  if (!dir.exists()) {
+    dir.mkdirs();
+  }
 }
