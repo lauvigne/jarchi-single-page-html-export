@@ -41,7 +41,7 @@ load(__DIR__ + 'Libraries/view2svg/archiFigureLibrary.js');
 load(__DIR__ + 'Libraries/view2svg/archiRelationshipLibrary.js');
 load(__DIR__ + 'Libraries/view2svg/viewToSvgSemantic.js');
 
-const BASE_URL = '';
+const BASE_URL = './';
 
 console.clear();
 console.show();
@@ -64,20 +64,27 @@ var icon = readFully(__DIR__ + 'resources/icon.css', 'UTF-8');
 var picnic = readFully(__DIR__ + 'resources/picnic-custom.css', 'UTF-8');
 
 var tplMainReport = _.template(readFully(__DIR__ + 'templates/main-report.html', 'UTF-8'));
+var tplInputCheckbox = _.template(readFully(__DIR__ + 'templates/input-checkbox.tpl', 'UTF-8'));
 var tplTreeView = _.template(readFully(__DIR__ + 'templates/model-tree-view.tpl', 'UTF-8'));
 var tplTreeFolder = _.template(readFully(__DIR__ + 'templates/model-tree-folder.tpl', 'UTF-8'));
 var tplView = _.template(readFully(__DIR__ + 'templates/view.tpl', 'UTF-8'));
+var tplViewHotspot = _.template(readFully(__DIR__ + 'templates/view-hotspot.tpl', 'UTF-8'));
 var tplViewObjectDialog = _.template(readFully(__DIR__ + 'templates/view-object-dialog.tpl', 'UTF-8'));
 var tplViewObjectPropertyRow = _.template(readFully(__DIR__ + 'templates/view-object-property-row.tpl', 'UTF-8'));
 
+var modelSelectorId = 'id-model-selector';
+var modelArticleId = 'id-model';
+var dialogNoneSelectorId = 'id-dialog-none';
+
 var treeFolder = '';
 var treeContent = '';
+var viewInputs = '';
+var viewVisibilityRules = '';
 var views = '';
 var dialogs = '';
+var dialogInputs = '';
+var dialogVisibilityRules = '';
 var dialogByConceptId = {};
-var dialogProxies = '';
-var dialogProxyViewRules = '';
-var dialogProxyDialogRules = '';
 
 var allFolders = $('folder');
 var viewsFolder = $(model).children().filter('folder.Views');
@@ -121,7 +128,11 @@ function exportViews(folder) {
       if (!v.prop("_hide_from_export_") || v.prop("_hide_from_export_") != "true") {
         console.log('> Exporting view "' + v.name + '"...');
         // Generate report's fragments
-        treeContent += tplTreeView({viewId: 'id-'+v.id, viewName: _.escape(v.name)});
+        var viewDomId = getViewDomId(v.id);
+        var viewSelectorId = getViewSelectorId(v.id);
+        treeContent += tplTreeView({viewId: viewSelectorId, viewName: _.escape(v.name)});
+        viewInputs += tplInputCheckbox({viewId: viewSelectorId});
+        viewVisibilityRules += '#'+viewSelectorId+':checked ~ * #views > article#'+viewDomId+'{display:block;}';
         
         var svgMarkup = viewToSvgSemantic.exportViewToSemanticSvg(v, {
           fontFamily: 'Arial, sans-serif',
@@ -129,14 +140,15 @@ function exportViews(folder) {
           fontFaceUrl: ''
         });
         var viewInteraction = buildViewInteraction(v);
-        svgMarkup = injectSvgInteractionLayers(svgMarkup, viewInteraction);
+        var viewHotspots = buildViewHotspots(svgMarkup, viewInteraction);
         $.fs.writeFile(imagesDirectory + "/" + v.id + ".svg", svgMarkup, 'UTF8');
 
         // Generate View's article tag
         views += tplView({
-          viewId: 'id-'+v.id,
+          viewId: viewDomId,
           viewName: _.escape(v.name),
           viewImagePath: "images/" + v.id + ".svg",
+          hotspots: viewHotspots,
           documentationText: _.escape(v.documentation).replace(/\n/g, '<br>'),
           documentationMarkdown: marked(_.escape(v.documentation), mdOptions)
         });
@@ -149,7 +161,7 @@ function exportViews(folder) {
 
 function buildViewInteraction(view) {
   var state = {
-    viewId: view.id,
+    viewId: getViewDomId(view.id),
     viewLinks: [],
     detailLinks: [],
     seenObjectIds: {}
@@ -158,37 +170,41 @@ function buildViewInteraction(view) {
   return state;
 }
 
-function injectSvgInteractionLayers(svgMarkup, interaction) {
-  var hasViewLinks = interaction.viewLinks.length > 0;
-  var hasDetailLinks = interaction.detailLinks.length > 0;
-  if (!hasViewLinks && !hasDetailLinks) {
-    return svgMarkup;
+function buildViewHotspots(svgMarkup, interaction) {
+  var viewBox = extractSvgViewBox(svgMarkup);
+  if (!viewBox) {
+    return '';
   }
-  var relationshipPathById = extractRelationshipPathMap(svgMarkup);
-  var layers = '';
-  if (hasDetailLinks) {
-    layers += '\n<g id="layer-object-links">';
-    interaction.detailLinks.forEach(function(link) {
-      layers += '<a xlink:href="../index.html#' + link.targetId + '" href="../index.html#' + link.targetId + '" target="_top">';
-      if (link.isRelationship && relationshipPathById[link.sourceObjectId]) {
-        layers += '<path id="svg-detail-' + link.sourceObjectId + '" d="' + escapeXmlAttr(relationshipPathById[link.sourceObjectId]) + '" fill="none" stroke="transparent" stroke-width="14" stroke-linecap="round" stroke-linejoin="round" pointer-events="stroke"/>';
-      } else {
-        layers += '<rect id="svg-detail-' + link.sourceObjectId + '" x="' + link.x + '" y="' + link.y + '" width="' + link.width + '" height="' + link.height + '" fill="transparent" pointer-events="all"/>';
-      }
-      layers += '</a>';
+  var hotspots = '';
+  interaction.viewLinks.forEach(function(link) {
+    var rect = toViewPercentRect(link.x, link.y, link.width, link.height, viewBox);
+    if (!rect) {
+      return;
+    }
+    hotspots += tplViewHotspot({
+      id: link.targetViewId,
+      hotspotClass: 'viewref-hotspot',
+      left: rect.left,
+      top: rect.top,
+      width: rect.width,
+      height: rect.height
     });
-    layers += '</g>\n';
-  }
-  if (hasViewLinks) {
-    layers += '\n<g id="layer-view-links">';
-    interaction.viewLinks.forEach(function(link) {
-      layers += '<a xlink:href="../index.html#id-' + link.targetViewId + '" href="../index.html#id-' + link.targetViewId + '" target="_top">';
-      layers += '<rect id="svg-link-' + link.sourceObjectId + '" x="' + link.x + '" y="' + link.y + '" width="' + link.width + '" height="' + link.height + '" fill="transparent" pointer-events="all"/>';
-      layers += '</a>';
+  });
+  interaction.detailLinks.forEach(function(link) {
+    var rect = toViewPercentRect(link.x, link.y, link.width, link.height, viewBox);
+    if (!rect) {
+      return;
+    }
+    hotspots += tplViewHotspot({
+      id: link.targetSelectorId,
+      hotspotClass: 'dialog-hotspot',
+      left: rect.left,
+      top: rect.top,
+      width: rect.width,
+      height: rect.height
     });
-    layers += '</g>\n';
-  }
-  return svgMarkup.replace('</svg>', layers + '</svg>');
+  });
+  return hotspots;
 }
 
 function collectViewInteraction(obj, offset, state) {
@@ -196,7 +212,7 @@ function collectViewInteraction(obj, offset, state) {
     if (vRef && vRef.id && vRef.refView && vRef.refView.id) {
       state.viewLinks.push({
         sourceObjectId: String(vRef.id),
-        targetViewId: String(vRef.refView.id),
+        targetViewId: getViewSelectorId(vRef.refView.id),
         x: vRef.bounds.x + offset.x,
         y: vRef.bounds.y + offset.y,
         width: vRef.bounds.width,
@@ -205,17 +221,17 @@ function collectViewInteraction(obj, offset, state) {
     }
   });
   $(obj).children('relationship').add($(obj).children('diagram-model-connection')).add($(obj).children('canvas-model-connection')).each(function(rel) {
-    addObjectDialogForSelection(rel, offset, state, true);
+    addObjectDialogForSelection(rel, offset, state);
   });
   $(obj).children().not('relationship').not('diagram-model-connection').not('canvas-model-connection').not('diagram-model-reference').each(function(child) {
-    addObjectDialogForSelection(child, offset, state, false);
+    addObjectDialogForSelection(child, offset, state);
   });
   $(obj).children().not('relationship').not('diagram-model-connection').not('canvas-model-connection').each(function(child) {
     collectViewInteraction(child, { x: offset.x + child.bounds.x, y: offset.y + child.bounds.y }, state);
   });
 }
 
-function addObjectDialogForSelection(diagramObject, offset, state, isRelationship) {
+function addObjectDialogForSelection(diagramObject, offset, state) {
   if (!diagramObject || !diagramObject.id || !diagramObject.bounds || !diagramObject.concept) {
     return;
   }
@@ -229,14 +245,11 @@ function addObjectDialogForSelection(diagramObject, offset, state, isRelationshi
   var displayType = getDisplayType(diagramObject);
   var documentation = getDocumentation(diagramObject);
   var propertiesRows = getPropertiesRows(diagramObject.concept);
-  var dialogId = ensureDialogForConcept(diagramObject.concept, state.viewId, displayName, displayType, documentation, propertiesRows);
-  var targetId = 'id-proxy-' + state.viewId + '-' + objectId;
-  addDialogProxy(targetId, 'id-' + state.viewId, dialogId);
+  var dialogSelectorId = ensureDialogForConcept(diagramObject.concept, displayName, displayType, documentation, propertiesRows);
 
   state.detailLinks.push({
     sourceObjectId: objectId,
-    targetId: targetId,
-    isRelationship: !!isRelationship,
+    targetSelectorId: dialogSelectorId,
     x: diagramObject.bounds.x + offset.x,
     y: diagramObject.bounds.y + offset.y,
     width: diagramObject.bounds.width,
@@ -244,54 +257,99 @@ function addObjectDialogForSelection(diagramObject, offset, state, isRelationshi
   });
 }
 
-function ensureDialogForConcept(concept, viewId, displayName, displayType, documentation, propertiesRows) {
+function ensureDialogForConcept(concept, displayName, displayType, documentation, propertiesRows) {
   if (!concept || !concept.id) {
-    return 'id-' + viewId + '-obj-unknown';
+    return dialogNoneSelectorId;
   }
   var conceptId = String(concept.id);
   if (dialogByConceptId[conceptId]) {
-    return dialogByConceptId[conceptId];
+    return getDialogSelectorId(conceptId);
   }
   var dialogId = 'id-concept-' + conceptId;
+  var dialogSelectorId = getDialogSelectorId(conceptId);
   dialogByConceptId[conceptId] = dialogId;
+  dialogInputs += "<input id='" + dialogSelectorId + "' class='hidden' type='radio' name='dialogs'>";
+  dialogVisibilityRules += '#' + dialogSelectorId + ':checked ~ #' + dialogId + '{display:block;}';
   dialogs += tplViewObjectDialog({
     dialogId: dialogId,
-    viewId: 'id-' + viewId,
+    dialogNoneSelectorId: dialogNoneSelectorId,
     objectName: _.escape(displayName),
     objectType: _.escape(displayType),
     documentationText: _.escape(documentation).replace(/\n/g, '<br>'),
     documentationMarkdown: marked(_.escape(documentation), mdOptions),
     propertiesRows: propertiesRows
   });
-  return dialogId;
+  return dialogSelectorId;
 }
 
-function addDialogProxy(targetId, viewId, dialogId) {
-  dialogProxies += '<span id="' + targetId + '" class="view-dialog-proxy"></span>';
-  dialogProxyViewRules += '#' + targetId + ':target ~ main #views > article#id-model{display:none;}';
-  dialogProxyViewRules += '#' + targetId + ':target ~ main #views > article#' + viewId + '{display:block;}';
-  dialogProxyDialogRules += '#' + targetId + ':target ~ #'+ dialogId + '{display:block;}';
+function getViewDomId(viewIdRaw) {
+  var id = String(viewIdRaw || '');
+  if (id.indexOf('id-') === 0) {
+    return id;
+  }
+  return 'id-' + id;
 }
 
-function extractRelationshipPathMap(svgMarkup) {
-  var map = {};
+function getViewSelectorId(viewIdRaw) {
+  return 'sel-' + getViewDomId(viewIdRaw);
+}
+
+function getDialogSelectorId(conceptIdRaw) {
+  return 'id-dialog-' + String(conceptIdRaw || '');
+}
+
+function extractSvgViewBox(svgMarkup) {
   if (!svgMarkup) {
-    return map;
+    return null;
   }
-  var re = /<g class="archi-relationship" id="([^"]+)"[^>]*>\s*<path d="([^"]+)"/g;
-  var match = null;
-  while ((match = re.exec(svgMarkup)) !== null) {
-    map[match[1]] = match[2];
+  var viewBoxMatch = svgMarkup.match(/viewBox="([^"]+)"/);
+  if (viewBoxMatch && viewBoxMatch[1]) {
+    var values = viewBoxMatch[1].trim().split(/\s+/).map(Number);
+    if (values.length === 4 && values.every(function(v) { return !isNaN(v); })) {
+      return {
+        minX: values[0],
+        minY: values[1],
+        width: values[2],
+        height: values[3]
+      };
+    }
   }
-  return map;
+  return null;
 }
 
-function escapeXmlAttr(value) {
-  return String(value)
-    .replace(/&/g, '&amp;')
-    .replace(/"/g, '&quot;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;');
+function toViewPercentRect(x, y, width, height, viewBox) {
+  if (!viewBox || viewBox.width <= 0 || viewBox.height <= 0 || width <= 0 || height <= 0) {
+    return null;
+  }
+
+  var left = ((x - viewBox.minX) / viewBox.width) * 100;
+  var top = ((y - viewBox.minY) / viewBox.height) * 100;
+  var right = (((x + width) - viewBox.minX) / viewBox.width) * 100;
+  var bottom = (((y + height) - viewBox.minY) / viewBox.height) * 100;
+
+  left = clampPercent(left);
+  top = clampPercent(top);
+  right = clampPercent(right);
+  bottom = clampPercent(bottom);
+
+  if (right <= left || bottom <= top) {
+    return null;
+  }
+
+  return {
+    left: formatPercent(left),
+    top: formatPercent(top),
+    width: formatPercent(right - left),
+    height: formatPercent(bottom - top)
+  };
+}
+
+function clampPercent(value) {
+  return Math.max(0, Math.min(100, value));
+}
+
+function formatPercent(value) {
+  return (Math.round(value * 1000) / 1000);
 }
 
 function getDisplayName(diagramObject) {
@@ -353,12 +411,16 @@ var mainReport = tplMainReport({
   icon: icon,
   picnic: picnic,
   modelTitle: _.escape(model.name),
+  modelSelectorId: modelSelectorId,
+  modelArticleId: modelArticleId,
   treeContent: treeContent,
+  viewInputs: viewInputs,
+  viewVisibilityRules: viewVisibilityRules,
+  dialogNoneSelectorId: dialogNoneSelectorId,
+  dialogInputs: dialogInputs,
+  dialogVisibilityRules: dialogVisibilityRules,
   views: views,
   dialogs: dialogs,
-  dialogProxies: dialogProxies,
-  dialogProxyViewRules: dialogProxyViewRules,
-  dialogProxyDialogRules: dialogProxyDialogRules,
   modelPurposeText: _.escape(model.purpose).replace(/\n/g, '<br>'),
   modelPurposeMarkdown: marked(_.escape(model.purpose), mdOptions),
   sidebarBgColor: '#37474f',

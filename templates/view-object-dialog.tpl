@@ -1,9 +1,9 @@
 <div id="{{dialogId}}" class="view-object-dialog">
-  <a href="#{{viewId}}" class="view-object-dialog-overlay"></a>
+  <label for="{{dialogNoneSelectorId}}" class="view-object-dialog-overlay"></label>
   <div class="view-object-dialog-content">
     <header>
       <h3>{{objectName}}</h3>
-      <a href="#{{viewId}}" class="close" aria-label="Close">&times;</a>
+      <label for="{{dialogNoneSelectorId}}" class="close" aria-label="Close">&times;</label>
     </header>
     <section>
       <p class="view-object-type">{{objectType}}</p>

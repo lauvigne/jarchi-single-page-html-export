@@ -1,1 +1,1 @@
-<label for="{{id}}" style="left:{{left}}%;top:{{top}}%;width:{{width}}%;height:{{height}}%;"></label>
+<label for="{{id}}" class="view-hotspot {{hotspotClass}}" style="left:{{left}}%;top:{{top}}%;width:{{width}}%;height:{{height}}%;"></label>

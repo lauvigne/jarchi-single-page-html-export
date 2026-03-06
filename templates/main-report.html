@@ -299,15 +299,10 @@ Copyright (c) 2020 Phillip Beauvoir & Jean-Baptiste Sarrodie - MIT License
       #views > article {
         display: none;
       }
-      #views > article#id-model {
+      #{{modelSelectorId}}:checked ~ * #views > article#{{modelArticleId}} {
         display: block;
       }
-      #views > article:target {
-        display: block;
-      }
-      #views:has(article:target) > article#id-model {
-        display: none;
-      }
+      {{viewVisibilityRules}}
 
 /* View Hotspot */
       .img-container {
@@ -315,6 +310,16 @@ Copyright (c) 2020 Phillip Beauvoir & Jean-Baptiste Sarrodie - MIT License
         display: block;
         max-width: 100%;
         margin-top: {{mainMargin}};
+      }
+      .img-container .view-hotspot {
+        position: absolute;
+        display: block;
+        z-index: 3;
+        cursor: pointer;
+        background: transparent;
+      }
+      .img-container .view-hotspot.viewref-hotspot {
+        z-index: 5;
       }
       .img-container img,
       .img-container object.view-svg,
@@ -330,13 +335,11 @@ Copyright (c) 2020 Phillip Beauvoir & Jean-Baptiste Sarrodie - MIT License
         inset: 0;
         z-index: 70;
       }
-      .view-dialog-proxy {
-        display: none;
-      }
       .view-object-dialog-overlay {
         position: absolute;
         inset: 0;
         background: rgba(0, 0, 0, 0.35);
+        cursor: pointer;
       }
       .view-object-dialog-content {
         position: absolute;
@@ -365,6 +368,7 @@ Copyright (c) 2020 Phillip Beauvoir & Jean-Baptiste Sarrodie - MIT License
         font-size: 22px;
         line-height: 1;
         color: #546e7a;
+        cursor: pointer;
       }
       .view-object-dialog-content > header .close:hover {
         color: #263238;
@@ -395,8 +399,7 @@ Copyright (c) 2020 Phillip Beauvoir & Jean-Baptiste Sarrodie - MIT License
         background: #f7f9fb;
         text-align: left;
       }
-      {{dialogProxyViewRules}}
-      {{dialogProxyDialogRules}}
+      {{dialogVisibilityRules}}
 
 /* Views' documentation style */
 			#views > article > div.txt
@@ -447,7 +450,10 @@ Copyright (c) 2020 Phillip Beauvoir & Jean-Baptiste Sarrodie - MIT License
 				</footer>
 			</div>
 			</div>
-      {{dialogProxies}}
+			<input id='{{modelSelectorId}}' type='radio' name='views' checked>
+			{{viewInputs}}
+			<input id='{{dialogNoneSelectorId}}' class="hidden" type='radio' name='dialogs' checked>
+			{{dialogInputs}}
 
 			<!-- Report eally starts here with the sidebar -->
 		<aside class="sidebar">
@@ -464,20 +470,20 @@ Copyright (c) 2020 Phillip Beauvoir & Jean-Baptiste Sarrodie - MIT License
 
 			<header id="main-header" class="top-header expandable">
 				<label for="sidebar" id="show-sidebar" class="icon menu"></label>
-				<a href="#id-model">
+				<label for="{{modelSelectorId}}">
 					<h3 class="title">{{modelTitle}}</h3>
-				</a>
+				</label>
 				<span class="spacer"></span>
 				<label for="preferences" id="show-preferences" class="icon gear"></label>
 			</header>
 
 			<main class="expandable">
-			<section id="views">
-				<article id="id-model">
+				<section id="views">
+					<article id="{{modelArticleId}}">
 					 <h2>{{modelTitle}}</h2>
-				 <div class="txt">{{modelPurposeText}}</div>
-				 <div class="md">{{modelPurposeMarkdown}}</div>
-				</article>
+					 <div class="txt">{{modelPurposeText}}</div>
+					 <div class="md">{{modelPurposeMarkdown}}</div>
+					</article>
 				{{views}}
 			</section>
 			<!--
