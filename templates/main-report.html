@@ -308,11 +308,26 @@ Copyright (c) 2020 Phillip Beauvoir & Jean-Baptiste Sarrodie - MIT License
 		  }
         .view-diagram-block {
           margin-top: 0;
+          position: relative;
+          display: block;
+          max-width: 100%;
+          overflow-x: auto;
+          overflow-y: visible;
+          padding-bottom: 4px;
         }
         .view-diagram-container {
           position: relative;
           display: inline-block;
-          max-width: 100%;
+          max-width: none;
+          margin-top: 0;
+          transform-origin: top left;
+          transform: scale(var(--global-zoom-factor, 1));
+        }
+        @supports (zoom: 1) {
+          .view-diagram-container .diagram-image {
+            transform: none;
+            zoom: var(--global-zoom, 1);
+          }
         }
         .view-diagram-container .diagram-image {
           display: block;
@@ -336,6 +351,117 @@ Copyright (c) 2020 Phillip Beauvoir & Jean-Baptiste Sarrodie - MIT License
           box-sizing: border-box;
           z-index: 3;
         }
+        .global-zoom-toolbar {
+          position: sticky;
+          top: 0;
+          z-index: 20;
+          display: flex;
+          justify-content: flex-end;
+          margin: 0 0 6px 0;
+        }
+        .global-zoom-select {
+          position: relative;
+          display: inline-block;
+          margin: 0;
+          font-size: 11px;
+          line-height: 1.2;
+        }
+        .global-zoom-select > summary {
+          list-style: none;
+          cursor: pointer;
+          user-select: none;
+          padding: 2px 6px;
+          border: 1px solid #b0bec5;
+          border-radius: 3px;
+          background: rgba(255, 255, 255, 0.94);
+          color: #455a64;
+          min-width: 70px;
+          text-align: right;
+        }
+        .global-zoom-select > summary::-webkit-details-marker {
+          display: none;
+        }
+        .global-zoom-prefix {
+          margin-right: 4px;
+          color: #78909c;
+        }
+        .global-zoom-current {
+          display: none;
+          font-weight: 600;
+        }
+        .global-zoom-select[open] > .global-zoom-options {
+          display: grid;
+        }
+        .global-zoom-options {
+          display: none;
+          position: absolute;
+          right: 0;
+          top: calc(100% + 2px);
+          grid-template-columns: repeat(3, minmax(42px, 1fr));
+          gap: 2px;
+          width: 148px;
+          max-height: 172px;
+          overflow: auto;
+          border: 1px solid #b0bec5;
+          border-radius: 3px;
+          background: rgba(255, 255, 255, 0.98);
+          padding: 4px;
+          box-shadow: 0 4px 10px rgba(0, 0, 0, 0.12);
+        }
+        .global-zoom-options label {
+          display: inline-block;
+          text-align: center;
+          padding: 3px 4px;
+          border: 1px solid #d0d7dd;
+          border-radius: 3px;
+          cursor: pointer;
+          background: #fff;
+        }
+        .global-zoom-options label:hover {
+          background: #f3f7fa;
+        }
+        #global-zoom-50:checked ~ * { --global-zoom-factor: 0.5; --global-zoom: 0.5; }
+        #global-zoom-55:checked ~ * { --global-zoom-factor: 0.55; --global-zoom: 0.55; }
+        #global-zoom-60:checked ~ * { --global-zoom-factor: 0.6; --global-zoom: 0.6; }
+        #global-zoom-65:checked ~ * { --global-zoom-factor: 0.65; --global-zoom: 0.65; }
+        #global-zoom-70:checked ~ * { --global-zoom-factor: 0.7; --global-zoom: 0.7; }
+        #global-zoom-75:checked ~ * { --global-zoom-factor: 0.75; --global-zoom: 0.75; }
+        #global-zoom-80:checked ~ * { --global-zoom-factor: 0.8; --global-zoom: 0.8; }
+        #global-zoom-85:checked ~ * { --global-zoom-factor: 0.85; --global-zoom: 0.85; }
+        #global-zoom-90:checked ~ * { --global-zoom-factor: 0.9; --global-zoom: 0.9; }
+        #global-zoom-95:checked ~ * { --global-zoom-factor: 0.95; --global-zoom: 0.95; }
+        #global-zoom-100:checked ~ * { --global-zoom-factor: 1; --global-zoom: 1; }
+        #global-zoom-105:checked ~ * { --global-zoom-factor: 1.05; --global-zoom: 1.05; }
+        #global-zoom-110:checked ~ * { --global-zoom-factor: 1.1; --global-zoom: 1.1; }
+        #global-zoom-115:checked ~ * { --global-zoom-factor: 1.15; --global-zoom: 1.15; }
+        #global-zoom-120:checked ~ * { --global-zoom-factor: 1.2; --global-zoom: 1.2; }
+        #global-zoom-125:checked ~ * { --global-zoom-factor: 1.25; --global-zoom: 1.25; }
+        #global-zoom-130:checked ~ * { --global-zoom-factor: 1.3; --global-zoom: 1.3; }
+        #global-zoom-135:checked ~ * { --global-zoom-factor: 1.35; --global-zoom: 1.35; }
+        #global-zoom-140:checked ~ * { --global-zoom-factor: 1.4; --global-zoom: 1.4; }
+        #global-zoom-145:checked ~ * { --global-zoom-factor: 1.45; --global-zoom: 1.45; }
+        #global-zoom-150:checked ~ * { --global-zoom-factor: 1.5; --global-zoom: 1.5; }
+        #global-zoom-50:checked ~ * .global-zoom-current[data-zoom="50"] { display: inline; }
+        #global-zoom-55:checked ~ * .global-zoom-current[data-zoom="55"] { display: inline; }
+        #global-zoom-60:checked ~ * .global-zoom-current[data-zoom="60"] { display: inline; }
+        #global-zoom-65:checked ~ * .global-zoom-current[data-zoom="65"] { display: inline; }
+        #global-zoom-70:checked ~ * .global-zoom-current[data-zoom="70"] { display: inline; }
+        #global-zoom-75:checked ~ * .global-zoom-current[data-zoom="75"] { display: inline; }
+        #global-zoom-80:checked ~ * .global-zoom-current[data-zoom="80"] { display: inline; }
+        #global-zoom-85:checked ~ * .global-zoom-current[data-zoom="85"] { display: inline; }
+        #global-zoom-90:checked ~ * .global-zoom-current[data-zoom="90"] { display: inline; }
+        #global-zoom-95:checked ~ * .global-zoom-current[data-zoom="95"] { display: inline; }
+        #global-zoom-100:checked ~ * .global-zoom-current[data-zoom="100"] { display: inline; }
+        #global-zoom-105:checked ~ * .global-zoom-current[data-zoom="105"] { display: inline; }
+        #global-zoom-110:checked ~ * .global-zoom-current[data-zoom="110"] { display: inline; }
+        #global-zoom-115:checked ~ * .global-zoom-current[data-zoom="115"] { display: inline; }
+        #global-zoom-120:checked ~ * .global-zoom-current[data-zoom="120"] { display: inline; }
+        #global-zoom-125:checked ~ * .global-zoom-current[data-zoom="125"] { display: inline; }
+        #global-zoom-130:checked ~ * .global-zoom-current[data-zoom="130"] { display: inline; }
+        #global-zoom-135:checked ~ * .global-zoom-current[data-zoom="135"] { display: inline; }
+        #global-zoom-140:checked ~ * .global-zoom-current[data-zoom="140"] { display: inline; }
+        #global-zoom-145:checked ~ * .global-zoom-current[data-zoom="145"] { display: inline; }
+        #global-zoom-150:checked ~ * .global-zoom-current[data-zoom="150"] { display: inline; }
         .view-element-selector {
           position: fixed;
           top: {{headerHeight}};
@@ -527,6 +653,28 @@ Copyright (c) 2020 Phillip Beauvoir & Jean-Baptiste Sarrodie - MIT License
 		<!-- One radio input per exported view -->
 			<input id='id-model' type='radio' name='views' checked>
 			{{inputCheckbox}}
+		<!-- Global zoom (all view images) -->
+			<input id='global-zoom-50' class="hidden" type='radio' name='global-zoom'>
+			<input id='global-zoom-55' class="hidden" type='radio' name='global-zoom'>
+			<input id='global-zoom-60' class="hidden" type='radio' name='global-zoom'>
+			<input id='global-zoom-65' class="hidden" type='radio' name='global-zoom'>
+			<input id='global-zoom-70' class="hidden" type='radio' name='global-zoom'>
+			<input id='global-zoom-75' class="hidden" type='radio' name='global-zoom'>
+			<input id='global-zoom-80' class="hidden" type='radio' name='global-zoom'>
+			<input id='global-zoom-85' class="hidden" type='radio' name='global-zoom'>
+			<input id='global-zoom-90' class="hidden" type='radio' name='global-zoom'>
+			<input id='global-zoom-95' class="hidden" type='radio' name='global-zoom'>
+			<input id='global-zoom-100' class="hidden" type='radio' name='global-zoom' checked>
+			<input id='global-zoom-105' class="hidden" type='radio' name='global-zoom'>
+			<input id='global-zoom-110' class="hidden" type='radio' name='global-zoom'>
+			<input id='global-zoom-115' class="hidden" type='radio' name='global-zoom'>
+			<input id='global-zoom-120' class="hidden" type='radio' name='global-zoom'>
+			<input id='global-zoom-125' class="hidden" type='radio' name='global-zoom'>
+			<input id='global-zoom-130' class="hidden" type='radio' name='global-zoom'>
+			<input id='global-zoom-135' class="hidden" type='radio' name='global-zoom'>
+			<input id='global-zoom-140' class="hidden" type='radio' name='global-zoom'>
+			<input id='global-zoom-145' class="hidden" type='radio' name='global-zoom'>
+			<input id='global-zoom-150' class="hidden" type='radio' name='global-zoom'>
 		<!-- Sidebar -->
 			<aside class="sidebar">
 			<label for="sidebar" id="hide-sidebar" class="icon close"></label>
@@ -575,6 +723,57 @@ Copyright (c) 2020 Phillip Beauvoir & Jean-Baptiste Sarrodie - MIT License
 
 		<!-- Main content -->
 			<main class="expandable">
+				<div class="global-zoom-toolbar">
+					<details class="global-zoom-select">
+						<summary>
+							<span class="global-zoom-prefix">Zoom</span>
+							<span class="global-zoom-current" data-zoom="50">50%</span>
+							<span class="global-zoom-current" data-zoom="55">55%</span>
+							<span class="global-zoom-current" data-zoom="60">60%</span>
+							<span class="global-zoom-current" data-zoom="65">65%</span>
+							<span class="global-zoom-current" data-zoom="70">70%</span>
+							<span class="global-zoom-current" data-zoom="75">75%</span>
+							<span class="global-zoom-current" data-zoom="80">80%</span>
+							<span class="global-zoom-current" data-zoom="85">85%</span>
+							<span class="global-zoom-current" data-zoom="90">90%</span>
+							<span class="global-zoom-current" data-zoom="95">95%</span>
+							<span class="global-zoom-current" data-zoom="100">100%</span>
+							<span class="global-zoom-current" data-zoom="105">105%</span>
+							<span class="global-zoom-current" data-zoom="110">110%</span>
+							<span class="global-zoom-current" data-zoom="115">115%</span>
+							<span class="global-zoom-current" data-zoom="120">120%</span>
+							<span class="global-zoom-current" data-zoom="125">125%</span>
+							<span class="global-zoom-current" data-zoom="130">130%</span>
+							<span class="global-zoom-current" data-zoom="135">135%</span>
+							<span class="global-zoom-current" data-zoom="140">140%</span>
+							<span class="global-zoom-current" data-zoom="145">145%</span>
+							<span class="global-zoom-current" data-zoom="150">150%</span>
+						</summary>
+						<div class="global-zoom-options">
+							<label for="global-zoom-50">50%</label>
+							<label for="global-zoom-55">55%</label>
+							<label for="global-zoom-60">60%</label>
+							<label for="global-zoom-65">65%</label>
+							<label for="global-zoom-70">70%</label>
+							<label for="global-zoom-75">75%</label>
+							<label for="global-zoom-80">80%</label>
+							<label for="global-zoom-85">85%</label>
+							<label for="global-zoom-90">90%</label>
+							<label for="global-zoom-95">95%</label>
+							<label for="global-zoom-100">100%</label>
+							<label for="global-zoom-105">105%</label>
+							<label for="global-zoom-110">110%</label>
+							<label for="global-zoom-115">115%</label>
+							<label for="global-zoom-120">120%</label>
+							<label for="global-zoom-125">125%</label>
+							<label for="global-zoom-130">130%</label>
+							<label for="global-zoom-135">135%</label>
+							<label for="global-zoom-140">140%</label>
+							<label for="global-zoom-145">145%</label>
+							<label for="global-zoom-150">150%</label>
+						</div>
+					</details>
+				</div>
 				<article class="views">
 					<!-- Views / Elements / Relationships tabs -->
 					<div class="tabs three">
